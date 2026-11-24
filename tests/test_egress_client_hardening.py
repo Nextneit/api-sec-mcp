@@ -11,13 +11,12 @@ Enforces:
 """
 
 import gzip
+
 import httpx
 import pytest
 
 from api_sec_mcp.egress.client import (
     EgressClient,
-    EgressError,
-    EgressResponse,
     EgressTimeoutError,
     ResponseTooLargeError,
 )
@@ -300,7 +299,7 @@ class TestHeadersHandling:
 
         raw_headers = [
             (b"x-large", large_header_value.encode("ascii")),
-            (b"x-utf8", "café-protegé".encode("utf-8")),
+            (b"x-utf8", "café-protegé".encode()),
         ]
 
         def handler(request: httpx.Request) -> httpx.Response:

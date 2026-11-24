@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import ipaddress
 import re
-from typing import Callable, NamedTuple
+from collections.abc import Callable
+from typing import NamedTuple
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
@@ -203,6 +204,11 @@ class ScopeGuard:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    @property
+    def config(self) -> ScopeConfig:
+        """The (read-only) scope configuration this guard enforces."""
+        return self._config
 
     def check(self, url: str) -> CheckResult:
         """

@@ -12,9 +12,11 @@ Principles enforced:
 
 from __future__ import annotations
 
+import asyncio
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 import httpx
@@ -111,7 +113,8 @@ class EgressClient:
         set explicit Host header and SNI extension, and execute without
         following redirects.
         """
-        check_result: CheckResult = self._guard.check(url)
+        # DNS resolution is blocking; keep it off the event loop.
+        check_result: CheckResult = await asyncio.to_thread(self._guard.check, url)
 
         req_headers = dict(headers or {})
         # Ensure Host header reflects the original host (and non-standard port if present)

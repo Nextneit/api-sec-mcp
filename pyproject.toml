@@ -31,6 +31,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
+filterwarnings = ["ignore::jwt.warnings.InsecureKeyLengthWarning"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 
@@ -41,3 +42,9 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "S", "ANN"]
 ignore = ["ANN101", "ANN102"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "S101", "S105", "S106", "E501"]
+"src/api_sec_mcp/tools/*" = ["E501"]
+"src/api_sec_mcp/egress/*" = ["E501"]
+"src/api_sec_mcp/server.py" = ["ANN401"]

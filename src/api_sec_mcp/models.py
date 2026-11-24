@@ -9,9 +9,8 @@ Key principles enforced here:
 
 from __future__ import annotations
 
-from enum import StrEnum
 import re
-from typing import Annotated
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -39,6 +38,15 @@ class RuleId(StrEnum):
     SERVER_BANNER_LEAK = "SERVER_BANNER_LEAK"
     POWERED_BY_LEAK = "POWERED_BY_LEAK"
 
+    # JWT audit rules
+    JWT_ALG_NONE = "JWT_ALG_NONE"
+    JWT_WEAK_HMAC_KEY = "JWT_WEAK_HMAC_KEY"
+    JWT_NO_EXPIRY = "JWT_NO_EXPIRY"
+    JWT_TOKEN_EXPIRED = "JWT_TOKEN_EXPIRED"  # noqa: S105
+    JWT_EXCESSIVE_LIFETIME = "JWT_EXCESSIVE_LIFETIME"
+    JWT_SENSITIVE_CLAIM_LEAK = "JWT_SENSITIVE_CLAIM_LEAK"
+    JWT_MALFORMED_STRUCTURE = "JWT_MALFORMED_STRUCTURE"
+
     # Generic / egress violations
     SCOPE_VIOLATION = "SCOPE_VIOLATION"
     RESPONSE_TOO_LARGE = "RESPONSE_TOO_LARGE"
@@ -61,6 +69,17 @@ def sanitize_evidence(val: str | None) -> str | None:
     return cleaned if cleaned else None
 
 
+_UNSAFE_LABEL_CHARS_RE = re.compile(r"[^A-Za-z0-9_.:\-]")
+
+
+def safe_label(val: object, max_len: int = 64) -> str:
+    """
+    Reduce any target-controlled identifier (claim name, alg, ...) to a strict charset
+    ``[A-Za-z0-9_.:-]`` (everything else becomes ``_``), bounded to *max_len* chars.
+    """
+    return _UNSAFE_LABEL_CHARS_RE.sub("_", str(val)[:max_len]) or "_"
+
+
 class Finding(BaseModel):
     """
     A single factual security finding formatted for swift human validation.
@@ -77,7 +96,7 @@ class Finding(BaseModel):
 
     rule: RuleId
     severity: Severity
-    location: str = Field(default="", max_length=128, description="Target component: header, claim, param, etc.")
+    location: str = Field(default="", max_length=128, description="Affected component")
     description: str = Field(..., max_length=256)
     evidence: str | None = Field(default=None, max_length=128)
 
@@ -98,5 +117,26 @@ class HeadersReport(BaseModel):
     target_url: str = Field(..., max_length=2048)
     status_code: int = Field(..., ge=100, le=599)
     missing_headers: list[str] = Field(default_factory=list)
+    findings: list[Finding] = Field(default_factory=list)
+    score: int = Field(..., ge=0, le=100, description="Security score from 0 to 100")
+
+
+class JwtReport(BaseModel):
+    """
+    Structured report for JSON Web Token (JWT) security analysis.
+    Claims and values are strictly bounded and sanitized.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    algorithm: str = Field(..., max_length=32)
+    has_signature: bool
+    is_expired: bool | None = None
+    issued_at: int | None = None
+    expires_at: int | None = None
+    detected_claims: list[str] = Field(
+        default_factory=list,
+        description="List of claim keys detected in payload (keys only, not values)",
+    )
     findings: list[Finding] = Field(default_factory=list)
     score: int = Field(..., ge=0, le=100, description="Security score from 0 to 100")

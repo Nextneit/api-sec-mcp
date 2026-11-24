@@ -128,7 +128,7 @@ The MCP server exposes specific reconnaissance and assessment tools designed for
 
 1. **`audit_security_headers(url)`**:
    Audits HTTP response headers on the target. Evaluates HSTS presence and `max-age` strength, CSP enforcement, `X-Frame-Options` (clickjacking defense), `X-Content-Type-Options` (`nosniff`), `Referrer-Policy`, and technology banner leaks (`Server`, `X-Powered-By`).
-2. **`audit_jwt(token)`** *(Upcoming)*:
+2. **`audit_json_web_token(token)`**:
    Audits JSON Web Tokens for weak algorithms (`none`, symmetric HMAC with public keys), missing expiry (`exp`), and sensitive claim exposures with bounded claims sanitization.
 3. **`audit_cors(url)`** *(Upcoming)*:
    Audits Cross-Origin Resource Sharing configurations by sending controlled origin probes and checking for wildcard origins (`*`) with credentials, null origins, or arbitrary reflection.
@@ -159,10 +159,11 @@ uv sync --all-groups
 uv run pytest tests/ -v
 ```
 
-Current test suite covers **85 tests**:
+Current test suite covers **115 tests**:
 - **`tests/test_scope_guard.py`** (52 tests): Engagement scope enforcement, cloud metadata hard blocks, alternate encodings, IPv6, CIDR matching, port/scheme filtering, and DNS rebinding protections.
 - **`tests/test_egress_client.py`** (6 tests): Basic egress transport mocking, Host header preservation, size limits, and non-following of redirects.
 - **`tests/test_egress_client_hardening.py`** (22 tests): SNI extensions, TLS verification guarantee, Content-Length aborts, infinite streaming cutoffs, gzip bomb protection, multi-header preservation (`Set-Cookie`), and public method bypass prevention (verified via mutation testing).
+- **`tests/test_jwt_audit.py`** and **`tests/test_spec001_hardening.py`**: JWT checks, bounded/sanitized output, never-raise guarantees, scope-config wiring, fail-closed scope loading, non-blocking DNS (see [`specs/001-hardening.md`](specs/001-hardening.md)).
 - **`tests/test_headers_tool.py`** (5 tests): Security header evaluations, version leaks, HSTS duration checks, and scope guard enforcement.
 
 ---
@@ -175,7 +176,8 @@ uv sync --all-groups
 
 # 2. Configure engagement scope
 cp scope.example.yaml scope.yaml
-# Edit scope.yaml to authorize your target hosts and IP ranges
+# Edit scope.yaml to authorize your target hosts and IP ranges.
+# The server refuses to start without it (fail-closed; no fallback to the example).
 
 # 3. Launch MCP server
 uv run api-sec-mcp
