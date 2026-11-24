@@ -13,7 +13,7 @@ from collections.abc import Callable
 from typing import NamedTuple
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---------------------------------------------------------------------------
 # Always-blocked ranges — cannot be overridden by allowed_ips
@@ -68,6 +68,15 @@ class ScopeConfig(BaseModel):
     max_requests_total: int = Field(default=1000, gt=0)
     max_requests_per_host_per_minute: int = Field(default=60, gt=0)
     max_concurrent_requests: int = Field(default=4, gt=0)
+    run_label: str | None = None
+    results_dir: str = Field(default="results", min_length=1)
+
+    @field_validator("run_label")
+    @classmethod
+    def _valid_run_label(cls, v: str | None) -> str | None:
+        if v is not None and not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}", v):
+            raise ValueError("run_label: letters, digits, '_', '.', '-' only (max 64, no leading dot)")
+        return v
 
 
 class CheckResult(NamedTuple):

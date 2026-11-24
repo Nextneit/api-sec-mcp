@@ -10,3 +10,4 @@ dist/
 *.egg-info/
 audit.jsonl
 audit.lab.jsonl
+results/

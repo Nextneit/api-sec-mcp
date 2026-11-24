@@ -6,6 +6,7 @@ Registers security tools and initializes the security gateway layers.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,7 @@ import yaml
 from fastmcp import FastMCP
 
 from api_sec_mcp.audit.logger import AuditLog, EventType, current_tool
+from api_sec_mcp.diff.store import ResultStore
 from api_sec_mcp.egress.client import EgressClient
 from api_sec_mcp.egress.rate_limit import RateLimiter
 from api_sec_mcp.egress.scope_guard import ScopeConfig, ScopeGuard
@@ -55,6 +57,9 @@ def build_egress_client(guard: ScopeGuard) -> EgressClient:
         max_response_bytes=config.max_response_bytes,
         audit=audit,
         limiter=limiter,
+        results=ResultStore(
+            config.results_dir, config.run_label or datetime.now(UTC).strftime("%Y-%m-%d")
+        ),
     )
 
 
@@ -76,7 +81,7 @@ async def audit_security_headers(url: str) -> dict:
     token = current_tool.set("audit_security_headers")
     try:
         report: HeadersReport = await inspect_security_headers(url=url, client=client)
-        return await _finish(client, report.model_dump(), url=url)
+        return await _finish(client, report.model_dump(), scan_url=url, url=url)
     finally:
         current_tool.reset(token)
 
@@ -92,7 +97,7 @@ async def audit_cors(url: str) -> dict:
     token = current_tool.set("audit_cors")
     try:
         report: CorsReport = await inspect_cors(url=url, client=client)
-        return await _finish(client, report.model_dump(), url=url)
+        return await _finish(client, report.model_dump(), scan_url=url, url=url)
     finally:
         current_tool.reset(token)
 
@@ -115,13 +120,20 @@ async def audit_json_web_token(token: str) -> dict:
         current_tool.reset(ctx)
 
 
-async def _finish(client: EgressClient, report: dict, **fields: Any) -> dict:  # noqa: ANN401
-    """Single choke point: output guard, then audit of the flags and of the tool call."""
+async def _finish(
+    client: EgressClient, report: dict, scan_url: str | None = None, **fields: Any  # noqa: ANN401
+) -> dict:
+    """Single choke point: output guard, audit of the flags, result snapshot, audit of the call."""
     result = apply_guard(report)
+    if client.audit is not None and result.flags:
+        ids = sorted({p.value for f in result.flags for p in f.patterns})
+        await client.audit.record(EventType.OUTPUT_FLAGGED, reason=",".join(ids))
+    if scan_url is not None and client.results is not None:
+        # may raise ResultStoreError: a silent gap would later read as a remediation (SPEC-008 D4)
+        client.results.record(
+            current_tool.get() or "", scan_url, result.report["findings"], result.report["score"]
+        )
     if client.audit is not None:
-        if result.flags:
-            ids = sorted({p.value for f in result.flags for p in f.patterns})
-            await client.audit.record(EventType.OUTPUT_FLAGGED, reason=",".join(ids))
         await client.audit.record(
             EventType.TOOL_CALL, findings=len(result.report.get("findings", [])), **fields
         )

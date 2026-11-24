@@ -95,6 +95,22 @@ def cors_secure(request: Request) -> Response:
     return _cors(origin, origin == "https://app.example.com")
 
 
+# ---------------------------------------------------------------- drift (SPEC-008)
+# Same URL, behavior depends on app.state.phase. Only the in-process test harness changes the phase;
+# the app exposes no route that mutates state.
+app.state.phase = "before"
+
+
+@app.get("/drift/headers")
+def drift_headers() -> Response:
+    return headers_insecure() if app.state.phase == "before" else headers_secure()
+
+
+@app.api_route("/drift/cors", methods=_METHODS)
+def drift_cors(request: Request) -> Response:
+    return cors_reflect(request) if app.state.phase == "before" else cors_secure(request)
+
+
 # ---------------------------------------------------------------- jwt
 _BIND = {"iss": "lab", "aud": "lab-api"}  # issuer/audience so only the profile's own flaw is reported
 

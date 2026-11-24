@@ -63,6 +63,8 @@ audit_log_path: audit.jsonl   # append-only, hash-chained, 0600
 max_requests_total: 1000                 # engagement budget (survives restarts)
 max_requests_per_host_per_minute: 60
 max_concurrent_requests: 4
+run_label: 2026-w47                      # optional; default = today's UTC date
+results_dir: results                     # scan snapshots, one JSONL per run (git-ignored)
 ```
 
 ---
@@ -144,7 +146,7 @@ The MCP server exposes specific reconnaissance and assessment tools designed for
 
 ## Roadmap
 
-- [ ] **Recurring Diff Engine (Engagement Tracking):** Compare weekly assessment runs against the same target using deterministic rule IDs to highlight newly introduced vulnerabilities and verify remediations.
+- [x] **Recurring Diff Engine (Engagement Tracking):** Compare weekly assessment runs using deterministic rule IDs to highlight new vulnerabilities and verified remediations (see below).
 - [x] **Target Lab (`target/`):** Deterministic vulnerable FastAPI environment with golden findings (see below).
 - [x] **Secondary Sanitizer Guard (`guards/sanitizer.py`):** Pattern-based heuristic scanner that redacts and reports instruction-like content in tool output (see below).
 
@@ -166,7 +168,7 @@ uv sync --all-groups
 uv run pytest tests/ -v
 ```
 
-Current test suite covers **434 tests**:
+Current test suite covers **469 tests**:
 - **`tests/test_scope_guard.py`** (52 tests): Engagement scope enforcement, cloud metadata hard blocks, alternate encodings, IPv6, CIDR matching, port/scheme filtering, and DNS rebinding protections.
 - **`tests/test_egress_client.py`** (6 tests): Basic egress transport mocking, Host header preservation, size limits, and non-following of redirects.
 - **`tests/test_egress_client_hardening.py`** (22 tests): SNI extensions, TLS verification guarantee, Content-Length aborts, infinite streaming cutoffs, gzip bomb protection, multi-header preservation (`Set-Cookie`), and public method bypass prevention (verified via mutation testing).
@@ -177,9 +179,29 @@ Current test suite covers **434 tests**:
 - **`tests/integration/`** (marked `integration`) and **`tests/test_lab_packaging.py`**: real sockets and a real MCP client against the Target Lab. Golden findings, hostile-content containment, redirect not followed, size/timeout limits, full engagement audit consistency and loopback-only packaging (see [`specs/005-target-lab.md`](specs/005-target-lab.md)).
 - **`tests/test_spec006_sanitizer.py`**: pattern table (positive spellings and near-misses per pattern), zero false positives on known-good evidence, redaction/finding behavior, audited choke point; lab routes `/hostile/token` and `/jwt/hostile-claim` in `tests/integration/`.
 - **`tests/test_spec007_jwt.py`**: header vectors, claim binding, time consistency, extended dictionary (file quality, speed, cap), scoring; six new JWT lab profiles with golden findings.
+- **`tests/test_spec008_diff.py`** and the lab drift test in `tests/integration/`: target normalization, result store (concurrency, tamper detection, run-id traversal), diff categories, "absence is not remediation", determinism under shuffling, CLI exit codes, and a real two-week diff against the lab in both directions.
 - **`tests/test_headers_tool.py`** (5 tests): Security header evaluations, version leaks, HSTS duration checks, and scope guard enforcement.
 
 ---
+
+## Weekly diff
+
+Every completed `audit_security_headers` / `audit_cors` call also appends a snapshot (rule, severity, location,
+sanitized evidence, score; **no** headers, bodies, tokens or query strings) to `results/<run>.jsonl`. The run is
+`run_label` from `scope.yaml`, or today's UTC date. Snapshots are written by the gateway and read by the human:
+there is **no MCP tool** to read results or diffs, so the agent cannot see or poison the weekly comparison.
+If a snapshot cannot be saved the tool call fails (a silent gap would later read as a remediation).
+
+```bash
+uv run api-sec-diff 2026-11-17 2026-11-24                 # text report
+uv run api-sec-diff w1 w2 --format json --fail-on high    # CI-friendly: exit 0 clean, 1 regressions, 2 error
+```
+
+A finding is identified by `(tool, target, rule, location)`; severity, wording and evidence are not part of its
+identity. Categories: `NEW`, `RESOLVED`, `PERSISTING`, `SEVERITY_CHANGED` (up/down). **A finding is `RESOLVED` only if
+the same target was scanned again and no longer shows it**: targets that were not re-scanned (or whose scan failed)
+are listed separately and never counted as fixed. JWT audits are not recorded (a token has no stable target) and
+query strings are dropped from targets, so `/api?id=1` and `/api?id=2` are the same target (last scan wins).
 
 ## Target Lab
 

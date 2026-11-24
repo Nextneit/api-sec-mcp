@@ -9,6 +9,7 @@ import pytest
 from fastmcp.exceptions import ToolError
 
 from api_sec_mcp.audit.logger import verify_chain
+from api_sec_mcp.diff.cli import main as diff_main
 from tests.integration.conftest import call_tool
 
 pytestmark = pytest.mark.integration
@@ -162,3 +163,42 @@ async def test_r8_budget_rejections_are_audited(lab, engagement):
     last = events(eng.log_path)[-1]
     assert last["event"] == "EGRESS_RATE_LIMITED" and last["reason"] == "TOTAL_BUDGET"
     assert verify_chain(eng.log_path).ok
+
+
+# ---------------- SPEC-008 R7: weekly diff against the lab ----------------
+GOLDEN_DIFF = json.loads((Path(__file__).parents[2] / "target" / "expected_diff.json").read_text())
+
+
+def _view(entries: list[dict]) -> list[tuple[str, str, str, str]]:
+    return sorted((e["tool"], e["rule"], str(e["severity"]), e["location"]) for e in entries)
+
+
+def test_spec008_lab_has_no_mutating_routes():
+    from target.app import app
+
+    methods = {m for r in app.routes for m in getattr(r, "methods", set())}
+    assert methods <= {"GET", "HEAD", "OPTIONS"}
+
+
+async def test_spec008_weekly_diff_both_directions(lab, engagement, drift, capsys):
+    results = None
+    for label, phase in (("w1", "before"), ("w2", "after")):
+        eng = engagement(run_label=label)
+        results = eng.results_dir
+        drift(phase)
+        await call_tool("audit_security_headers", {"url": lab.base + "/drift/headers"})
+        await call_tool("audit_cors", {"url": lab.base + "/drift/cors"})
+
+    for name, (base, head) in {"forward": ("w1", "w2"), "reverse": ("w2", "w1")}.items():
+        want = GOLDEN_DIFF[name]
+        code = diff_main([base, head, "--results-dir", str(results), "--format", "json"])
+        out = capsys.readouterr().out
+        report = json.loads(out)
+        assert code == want["exit_code"], name
+        assert _view(report["new"]) == _view(want["new"]), name
+        assert _view(report["resolved"]) == _view(want["resolved"]), name
+        assert report["summary"]["regressions"] == want["regressions"], name
+        assert report["persisting"] == [] and report["not_rescanned"] == [] and report["new_targets"] == []
+        # deterministic: running the CLI again gives the same bytes
+        diff_main([base, head, "--results-dir", str(results), "--format", "json"])
+        assert capsys.readouterr().out == out

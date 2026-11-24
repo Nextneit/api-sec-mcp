@@ -1,6 +1,6 @@
 # SPEC-008 — Weekly diff engine
 
-Status: **approved** (all open questions resolved with the recommendations below) · Depends on: SPEC-001…005 (uses the Target Lab's deterministic findings)
+Status: **implemented** (all open questions resolved with the recommendations below) · Depends on: SPEC-001…005 (uses the Target Lab's deterministic findings)
 
 > Numbering follows the roadmap: 006 Sanitizer guard and 007 extra JWT checks are still pending and do not
 > block this spec.
@@ -103,6 +103,12 @@ README "Weekly diff" section (workflow: pick a `run_label` per week, run the eng
 threat-model note (results integrity is the operator's host, same boundary as the audit log), `.gitignore`,
 `CLAUDE.md` invariant "changing a rule's identity fields requires updating the golden diff", test count.
 
+## Implementation notes
+- `EgressClient.results` carries the `ResultStore`; clients built without it (most unit tests) record nothing.
+- Snapshots are written after the output guard (SPEC-006) so they only ever hold what the agent also saw.
+- Rule ids in records are validated by charset, not by the current `RuleId` enum, so runs recorded by an older or
+  newer version still load.
+
 ## Non-goals
 JWT diffs (tokens have no stable target), trends over more than two runs, HTML/PDF reports, accepted-risk
 suppression or baselines, diffing evidence values, scheduling/automation, exposing results or diffs to the agent,
@@ -123,6 +129,6 @@ signing or hash-chaining result files (candidate for a later spec; host compromi
 
 ## Tasks
 1. [x] Review/approve spec (answer open questions)
-2. [ ] Tests R1–R7 (red), including lab drift routes and `target/expected_diff.json`
-3. [ ] Implement `diff/` package, config fields, server recording, CLI entry point
-4. [ ] Ruff, README, CLAUDE.md, commit
+2. [x] Tests R1–R7 (red), including lab drift routes and `target/expected_diff.json`
+3. [x] Implement `diff/` package, config fields, server recording, CLI entry point
+4. [x] Ruff, README, CLAUDE.md, commit

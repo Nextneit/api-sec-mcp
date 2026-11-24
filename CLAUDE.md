@@ -18,6 +18,7 @@ anti-SSRF, bounded factual output), not the checks. Read README.md for the threa
 - `models.py` — `Finding`, reports, closed enums (`RuleId`, `Severity`), `safe_label`, `sanitize_evidence`.
 - `server.py` — FastMCP wiring only; no logic.
 - `audit/logger.py` — hash-chained JSONL audit log (`api-sec-verify` checks it). `egress/rate_limit.py` — budget/rate limits.
+- `diff/` — result snapshots (`store.py`), identity/normalization, diff engine and the `api-sec-diff` CLI. The agent has no tool to read results.
 - `guards/sanitizer.py` — heuristic output guard (redact + `OUTPUT_SUSPICIOUS_CONTENT`); defense in depth only.
 - `target/` — INTENTIONALLY VULNERABLE lab + `expected.json` golden findings. Never bind it beyond loopback; never import it from `src/`.
 - `specs/` — numbered specs; `status` in the header says whether a spec may be implemented.
@@ -34,7 +35,9 @@ anti-SSRF, bounded factual output), not the checks. Read README.md for the threa
 6. Fail closed: missing/invalid scope → refuse to start. No example-file fallback.
 7. Blocking calls (DNS) stay off the event loop (`asyncio.to_thread`).
 8. Every egress decision is audited before the request is sent (audit-or-deny); limits are fail-fast.
-9. When a rule's severity/location changes, update `target/expected.json` in the same commit.
+9. When a rule's severity/location changes, update `target/expected.json` (and `target/expected_diff.json` if the drift routes are affected) in the same commit.
+10. A finding's identity is `(tool, target, rule, location)`: renaming a rule or reformatting a `location` string breaks week-to-week diffs. Treat both as a stable public contract.
+11. Absence of a scan is never remediation: never report `RESOLVED` for a target that was not re-scanned.
 
 ## Workflow: Spec-Driven Development
 Non-trivial work follows `specs/NNN-name.md` → tests (red) → code (green) → README/ruff → commit.

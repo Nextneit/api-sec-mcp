@@ -20,6 +20,7 @@ dependencies = [
 [project.scripts]
 api-sec-mcp = "api_sec_mcp.server:main"
 api-sec-verify = "api_sec_mcp.audit.logger:main"
+api-sec-diff = "api_sec_mcp.diff.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/api_sec_mcp"]
@@ -49,9 +50,10 @@ select = ["E", "F", "I", "UP", "S", "ANN"]
 ignore = ["ANN101", "ANN102"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["ANN", "S101", "S104", "S105", "S106", "E501"]
+"tests/**" = ["ANN", "S101", "S104", "S105", "S106", "S311", "E501"]
 "target/**" = ["ANN", "S105", "E501"]  # intentionally vulnerable lab (fixed public secrets)
 "src/api_sec_mcp/tools/*" = ["E501"]
 "src/api_sec_mcp/egress/*" = ["E501"]
 "src/api_sec_mcp/guards/*" = ["E501"]  # regex tables
+"src/api_sec_mcp/diff/*" = ["E501"]
 "src/api_sec_mcp/server.py" = ["ANN401"]

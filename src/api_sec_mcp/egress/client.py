@@ -23,6 +23,7 @@ from urllib.parse import urlparse, urlunparse
 import httpx
 
 from api_sec_mcp.audit.logger import AuditLog, EventType
+from api_sec_mcp.diff.store import ResultStore
 from api_sec_mcp.egress.rate_limit import RateLimiter, RateLimitExceededError
 from api_sec_mcp.egress.scope_guard import CheckResult, ScopeGuard, ScopeViolationError
 
@@ -79,6 +80,7 @@ class EgressClient:
         verify: bool = True,
         audit: AuditLog | None = None,
         limiter: RateLimiter | None = None,
+        results: ResultStore | None = None,
     ) -> None:
         self._guard = scope_guard
         self._timeout = timeout
@@ -87,6 +89,7 @@ class EgressClient:
         self.verify = verify
         self.audit = audit
         self.limiter = limiter
+        self.results = results
 
     async def get(
         self,

@@ -1,0 +1,125 @@
+{
+  "_comment": "Diff of /drift/* between phase 'before' (insecure) and 'after' (secure). forward = w1->w2, reverse = w2->w1.",
+  "forward": {
+    "exit_code": 0,
+    "new": [],
+    "resolved": [
+      {
+        "tool": "audit_security_headers",
+        "rule": "CSP_MISSING",
+        "severity": "high",
+        "location": "Header: Content-Security-Policy"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "X_FRAME_OPTIONS_MISSING",
+        "severity": "medium",
+        "location": "Header: X-Frame-Options"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "X_CONTENT_TYPE_OPTIONS_MISSING",
+        "severity": "medium",
+        "location": "Header: X-Content-Type-Options"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "REFERRER_POLICY_MISSING",
+        "severity": "low",
+        "location": "Header: Referrer-Policy"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "HSTS_SHORT_MAX_AGE",
+        "severity": "low",
+        "location": "Header: Strict-Transport-Security (max-age directive)"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "SERVER_BANNER_LEAK",
+        "severity": "low",
+        "location": "Header: Server"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "POWERED_BY_LEAK",
+        "severity": "low",
+        "location": "Header: X-Powered-By"
+      },
+      {
+        "tool": "audit_cors",
+        "rule": "CORS_REFLECTION_WITH_CREDENTIALS",
+        "severity": "critical",
+        "location": "Header: Access-Control-Allow-Origin (probe: arbitrary)"
+      },
+      {
+        "tool": "audit_cors",
+        "rule": "CORS_NULL_ORIGIN_ALLOWED",
+        "severity": "high",
+        "location": "Header: Access-Control-Allow-Origin (probe: null)"
+      }
+    ],
+    "regressions": 0
+  },
+  "reverse": {
+    "exit_code": 1,
+    "new": [
+      {
+        "tool": "audit_security_headers",
+        "rule": "CSP_MISSING",
+        "severity": "high",
+        "location": "Header: Content-Security-Policy"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "X_FRAME_OPTIONS_MISSING",
+        "severity": "medium",
+        "location": "Header: X-Frame-Options"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "X_CONTENT_TYPE_OPTIONS_MISSING",
+        "severity": "medium",
+        "location": "Header: X-Content-Type-Options"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "REFERRER_POLICY_MISSING",
+        "severity": "low",
+        "location": "Header: Referrer-Policy"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "HSTS_SHORT_MAX_AGE",
+        "severity": "low",
+        "location": "Header: Strict-Transport-Security (max-age directive)"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "SERVER_BANNER_LEAK",
+        "severity": "low",
+        "location": "Header: Server"
+      },
+      {
+        "tool": "audit_security_headers",
+        "rule": "POWERED_BY_LEAK",
+        "severity": "low",
+        "location": "Header: X-Powered-By"
+      },
+      {
+        "tool": "audit_cors",
+        "rule": "CORS_REFLECTION_WITH_CREDENTIALS",
+        "severity": "critical",
+        "location": "Header: Access-Control-Allow-Origin (probe: arbitrary)"
+      },
+      {
+        "tool": "audit_cors",
+        "rule": "CORS_NULL_ORIGIN_ALLOWED",
+        "severity": "high",
+        "location": "Header: Access-Control-Allow-Origin (probe: null)"
+      }
+    ],
+    "resolved": [],
+    "regressions": 5
+  }
+}

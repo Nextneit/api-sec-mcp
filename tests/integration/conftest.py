@@ -42,6 +42,7 @@ class Lab:
 class Engagement:
     client: server.EgressClient
     log_path: Path
+    results_dir: Path
 
 
 @pytest.fixture(scope="session")
@@ -75,12 +76,14 @@ def engagement(lab, tmp_path, monkeypatch):
         params = {
             "allowed_ips": ["127.0.0.1"], "allowed_ports": [lab.port], "allowed_schemes": ["http"],
             "audit_log_path": str(tmp_path / "audit.jsonl"),
+            "results_dir": str(tmp_path / "results"),
             "max_response_bytes": 100_000, "request_timeout_seconds": 5,
         }
         params.update(overrides)
         client = server.build_egress_client(ScopeGuard(ScopeConfig(**params)))
         monkeypatch.setattr(server, "_CLIENT", client)
-        return Engagement(client=client, log_path=tmp_path / "audit.jsonl")
+        return Engagement(client=client, log_path=tmp_path / "audit.jsonl",
+                          results_dir=Path(params["results_dir"]))
 
     return make
 
@@ -89,3 +92,15 @@ async def call_tool(name: str, args: dict) -> dict:
     """Invoke a tool through the real MCP protocol (in-memory transport)."""
     async with Client(server.mcp) as c:
         return (await c.call_tool(name, args)).data
+
+
+@pytest.fixture
+def drift():
+    """Flip the lab between 'before' (insecure) and 'after' (secure). Harness-only, in-process."""
+    from target.app import app
+
+    def set_phase(phase: str) -> None:
+        app.state.phase = phase
+
+    yield set_phase
+    app.state.phase = "before"
