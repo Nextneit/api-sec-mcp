@@ -223,3 +223,17 @@ def test_r8_config_default_and_wiring(tmp_path):
     assert client.audit is not None
     assert (tmp_path / "x.jsonl").exists()
     assert "audit.jsonl" in open(".gitignore").read()
+
+
+# ---------------- CLI ----------------
+async def test_cli_verify(tmp_path, capsys):
+    from api_sec_mcp.audit.logger import main
+
+    assert main([str(tmp_path / "missing.jsonl")]) == 2
+    p = tmp_path / "a.jsonl"
+    await _make_log(p)
+    assert main([str(p)]) == 0 and "OK: 5 events" in capsys.readouterr().out
+    lines = p.read_text().splitlines()
+    lines[1] = lines[1].replace("t1", "tX")
+    p.write_text("\n".join(lines) + "\n")
+    assert main([str(p)]) == 1

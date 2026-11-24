@@ -29,7 +29,7 @@ In an automated pentest engagement, an LLM agent requires capabilities to probe 
 | **Open redirect SSRF pivot** — target returns a 301/302/307 pointing to an internal IP or metadata endpoint | Egress client strictly enforces `follow_redirects=False`. Redirects are never followed automatically. |
 | **Denial of Service / Decompression bombs** — target sends infinite byte streams, huge Content-Length, or gzip bombs | The client checks `Content-Length` upfront before reading, truncates infinite chunk generators at `max_response_bytes`, and measures decompressed bytes for encoded responses. |
 | **Operator / Scope breach** — attempts to scan an asset outside the agreed engagement scope | `ScopeGuard` operates independently of MCP. `scope.yaml` must be provided explicitly with an explicit allowlist (deny-by-default). |
-| **Repudiation / unverifiable engagement** — no proof of what the agent touched or what was refused | Every egress decision (blocked / allowed / completed / error) and tool call is appended to a hash-chained JSONL audit log (`audit_log_path`). Metadata only: query strings, headers, bodies and JWT contents are never logged. **Audit-or-deny:** if the log cannot be written, the request is not sent. Verify with `api_sec_mcp.audit.logger.verify_chain`. |
+| **Repudiation / unverifiable engagement** — no proof of what the agent touched or what was refused | Every egress decision (blocked / allowed / completed / error) and tool call is appended to a hash-chained JSONL audit log (`audit_log_path`). Metadata only: query strings, headers, bodies and JWT contents are never logged. **Audit-or-deny:** if the log cannot be written, the request is not sent. Verify with `uv run api-sec-verify [audit.jsonl]`. |
 
 ### Out of scope (documented, not mitigated here)
 
@@ -161,7 +161,7 @@ uv sync --all-groups
 uv run pytest tests/ -v
 ```
 
-Current test suite covers **135 tests**:
+Current test suite covers **136 tests**:
 - **`tests/test_scope_guard.py`** (52 tests): Engagement scope enforcement, cloud metadata hard blocks, alternate encodings, IPv6, CIDR matching, port/scheme filtering, and DNS rebinding protections.
 - **`tests/test_egress_client.py`** (6 tests): Basic egress transport mocking, Host header preservation, size limits, and non-following of redirects.
 - **`tests/test_egress_client_hardening.py`** (22 tests): SNI extensions, TLS verification guarantee, Content-Length aborts, infinite streaming cutoffs, gzip bomb protection, multi-header preservation (`Set-Cookie`), and public method bypass prevention (verified via mutation testing).

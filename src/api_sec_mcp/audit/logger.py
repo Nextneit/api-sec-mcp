@@ -173,3 +173,24 @@ def verify_chain(path: Path | str) -> VerifyResult:
             prev = _digest(line)
             n += 1
     return VerifyResult(True, None, n)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI: ``api-sec-verify [path]`` — exit 0 if the chain is intact, 1 if not, 2 on I/O error."""
+    import sys
+
+    args = sys.argv[1:] if argv is None else argv
+    path = Path(args[0]) if args else Path("audit.jsonl")
+    if not path.is_file():
+        print(f"Audit log not found: {path}. It is created when the server handles its first call.")
+        return 2
+    result = verify_chain(path)
+    if result.ok:
+        print(f"OK: {result.lines} events, chain intact ({path})")
+        return 0
+    print(f"TAMPERED: chain broken at seq {result.bad_seq} ({path})")
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

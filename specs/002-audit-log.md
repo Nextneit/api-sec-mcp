@@ -59,6 +59,7 @@ Fields: `seq:int`, `ts:str(UTC ISO-8601)`, `prev:str(64 hex | "0"*64)`, `event:E
 ### R7 — Chain verification
 - `verify_chain(path) -> VerifyResult(ok: bool, bad_seq: int | None, lines: int)`.
 - AC: mutating a line, deleting a non-final line, or reordering lines makes `ok=False` and points at the first bad `seq`. (Truncating the tail is undetectable without an external anchor — documented limitation.)
+- CLI `api-sec-verify [path]` (exit 0 intact / 1 tampered / 2 missing).
 - Continuing an existing log after restart resumes `seq` and `prev` from the last line.
 
 ### R8 — Configuration & wiring

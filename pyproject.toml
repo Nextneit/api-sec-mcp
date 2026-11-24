@@ -19,6 +19,7 @@ dependencies = [
 
 [project.scripts]
 api-sec-mcp = "api_sec_mcp.server:main"
+api-sec-verify = "api_sec_mcp.audit.logger:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/api_sec_mcp"]
