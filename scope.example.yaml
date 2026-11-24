@@ -1,0 +1,43 @@
+# scope.example.yaml — copy to scope.yaml and edit before running.
+#
+# Deny-by-default: only the entries below are reachable through the gateway.
+# Everything else — including loopback, link-local, and cloud metadata IPs —
+# is blocked even if not listed here.
+
+# Allowed target hosts (exact FQDNs or bare hostnames).
+# DNS resolution is performed at request time; every resolved IP is validated
+# against the lists below before the connection is made.
+allowed_hosts:
+  - api.example.com
+  - staging.example.com
+
+# Allowed IP addresses and CIDR ranges.
+# Use this to authorize a known fixed IP or a private Docker network segment
+# without opening all RFC-1918 space.
+# Examples:
+#   - "203.0.113.42"          # single public IP (TEST-NET-3, RFC 5737)
+#   - "192.0.2.0/24"          # TEST-NET-1 (RFC 5737) — demo range
+#   - "172.20.0.0/16"         # a Docker bridge network
+allowed_ips:
+  - "203.0.113.42"
+  - "192.0.2.0/24"
+
+# Allowed TCP ports.
+allowed_ports:
+  - 80
+  - 443
+  - 8080
+  - 8443
+
+# Allowed URI schemes (only http and https are meaningful here;
+# file://, ftp://, gopher://, etc. are always rejected regardless).
+allowed_schemes:
+  - https
+  - http
+
+# Optional: maximum response body size in bytes (default: 1 MiB).
+# The client will refuse to read beyond this limit.
+max_response_bytes: 1048576
+
+# Optional: HTTP request timeout in seconds (default: 10).
+request_timeout_seconds: 10
