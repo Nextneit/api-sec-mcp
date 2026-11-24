@@ -136,7 +136,7 @@ The MCP server exposes specific reconnaissance and assessment tools designed for
 1. **`audit_security_headers(url)`**:
    Audits HTTP response headers on the target. Evaluates HSTS presence and `max-age` strength, CSP enforcement, `X-Frame-Options` (clickjacking defense), `X-Content-Type-Options` (`nosniff`), `Referrer-Policy`, and technology banner leaks (`Server`, `X-Powered-By`).
 2. **`audit_json_web_token(token)`**:
-   Audits JSON Web Tokens for weak algorithms (`none`, symmetric HMAC with public keys), missing expiry (`exp`), and sensitive claim exposures with bounded claims sanitization.
+   Offline, token-only audit. Detects `alg=none`; weak HMAC secrets (curated ~350-entry dictionary, signature checked once per secret, hard cap 2000); header key-injection vectors (`jku`/`x5u` remote key URLs, `jwk`/`x5c` embedded keys, `kid` path traversal/injection, `crit`); missing `aud`/`iss`; `nbf` in the future; inconsistent timestamps; missing/expired/over-long `exp`; and sensitive claim names. It never fetches a `jku` URL (that would be an SSRF primitive controlled by the token) and never echoes target values. Algorithm confusion is out of scope until the operator can supply the server's public key. Spec: [`specs/007-jwt-extra-checks.md`](specs/007-jwt-extra-checks.md).
 3. **`audit_cors(url)`**:
    Audits CORS with a **fixed** set of 4 probes (arbitrary origin, `null`, look-alike suffix domain, and a `PUT` preflight). The agent cannot supply origins. Detects wildcard origins (with/without credentials), arbitrary reflection, `null` origin, weak origin validation and permissive preflights. Target header values are never echoed; evidence is a fixed label. Spec: [`specs/003-cors.md`](specs/003-cors.md).
 
@@ -166,7 +166,7 @@ uv sync --all-groups
 uv run pytest tests/ -v
 ```
 
-Current test suite covers **369 tests**:
+Current test suite covers **434 tests**:
 - **`tests/test_scope_guard.py`** (52 tests): Engagement scope enforcement, cloud metadata hard blocks, alternate encodings, IPv6, CIDR matching, port/scheme filtering, and DNS rebinding protections.
 - **`tests/test_egress_client.py`** (6 tests): Basic egress transport mocking, Host header preservation, size limits, and non-following of redirects.
 - **`tests/test_egress_client_hardening.py`** (22 tests): SNI extensions, TLS verification guarantee, Content-Length aborts, infinite streaming cutoffs, gzip bomb protection, multi-header preservation (`Set-Cookie`), and public method bypass prevention (verified via mutation testing).
@@ -176,6 +176,7 @@ Current test suite covers **369 tests**:
 - **`tests/test_spec004_rate_limit.py`**: config validation, sliding window with fake clock, budget persistence via audit log, concurrency release on error/cancel, audited rejections, all-or-nothing CORS.
 - **`tests/integration/`** (marked `integration`) and **`tests/test_lab_packaging.py`**: real sockets and a real MCP client against the Target Lab. Golden findings, hostile-content containment, redirect not followed, size/timeout limits, full engagement audit consistency and loopback-only packaging (see [`specs/005-target-lab.md`](specs/005-target-lab.md)).
 - **`tests/test_spec006_sanitizer.py`**: pattern table (positive spellings and near-misses per pattern), zero false positives on known-good evidence, redaction/finding behavior, audited choke point; lab routes `/hostile/token` and `/jwt/hostile-claim` in `tests/integration/`.
+- **`tests/test_spec007_jwt.py`**: header vectors, claim binding, time consistency, extended dictionary (file quality, speed, cap), scoring; six new JWT lab profiles with golden findings.
 - **`tests/test_headers_tool.py`** (5 tests): Security header evaluations, version leaks, HSTS duration checks, and scope guard enforcement.
 
 ---

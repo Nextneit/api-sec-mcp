@@ -100,8 +100,9 @@ async def audit_cors(url: str) -> dict:
 @mcp.tool()
 async def audit_json_web_token(token: str) -> dict:
     """
-    Audit a JSON Web Token (JWT) for signature bypasses (alg=none),
-    weak dictionary HMAC keys, missing/expired expiration, and sensitive claims.
+    Audit a JSON Web Token (JWT) offline for signature bypasses (alg=none), weak HMAC keys,
+    header key-injection vectors (jku/x5u/jwk/x5c/kid/crit), missing audience/issuer,
+    time-claim problems and sensitive claim names.
     Returns a typed, bounded security report.
     """
     client = get_egress_client()

@@ -1,6 +1,6 @@
 # SPEC-007 — Additional JWT checks
 
-Status: **approved** (all open questions resolved with the recommendations below) · Depends on: SPEC-001, SPEC-005 (lab), SPEC-006 (guard sits on top)
+Status: **implemented** (all open questions resolved with the recommendations below) · Depends on: SPEC-001, SPEC-005 (lab), SPEC-006 (guard sits on top)
 
 ## Why
 `audit_json_web_token` covers `alg=none`, a tiny weak-secret list, expiry and sensitive claim names. Real
@@ -69,6 +69,12 @@ dictionary. All of these can be decided from the token alone, offline.
 README tool description and rule list, `CLAUDE.md` note about adding rules (update `target/expected.json`),
 test count, spec ticked.
 
+## Implementation notes
+- The header and payload are decoded with plain base64url + JSON instead of PyJWT: PyJWT rejects any token
+  carrying a `crit` header as malformed, which would have made `JWT_CRIT_HEADER` unreachable.
+- The HMAC check computes the signature once per dictionary entry (`hmac.compare_digest`) instead of calling
+  `jwt.decode` per secret: no repeated parsing, no key-length warnings, ~100x faster.
+
 ## Non-goals
 Fetching remote keys, verifying RS/ES signatures, algorithm-confusion testing (needs the server's public key,
 not available offline), JWE tokens, JWKS endpoint auditing, token generation or forging helpers (the tool
@@ -85,6 +91,6 @@ only inspects).
 
 ## Tasks
 1. [x] Review/approve spec (answer open questions)
-2. [ ] Tests R1–R5 (red), update lab tokens and golden file
-3. [ ] Implement rules, dictionary loader, scoring, lab profiles
-4. [ ] Ruff, README, CLAUDE.md, commit
+2. [x] Tests R1–R5 (red), update lab tokens and golden file
+3. [x] Implement rules, dictionary loader, scoring, lab profiles
+4. [x] Ruff, README, CLAUDE.md, commit

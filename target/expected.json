@@ -205,5 +205,70 @@
         "location": "Field: detected_claims[2]"
       }
     ]
+  },
+  "/jwt/weak-secret-extended": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "JWT_WEAK_HMAC_KEY",
+        "severity": "critical",
+        "location": "Signature"
+      }
+    ]
+  },
+  "/jwt/kid-injection": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "JWT_KID_INJECTION",
+        "severity": "high",
+        "location": "Header: kid"
+      }
+    ]
+  },
+  "/jwt/jku": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "JWT_REMOTE_KEY_URL",
+        "severity": "high",
+        "location": "Header: jku"
+      }
+    ]
+  },
+  "/jwt/embedded-jwk": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "JWT_EMBEDDED_KEY",
+        "severity": "high",
+        "location": "Header: jwk"
+      }
+    ]
+  },
+  "/jwt/no-aud-iss": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "JWT_MISSING_AUDIENCE",
+        "severity": "low",
+        "location": "Claim: aud"
+      },
+      {
+        "rule": "JWT_MISSING_ISSUER",
+        "severity": "low",
+        "location": "Claim: iss"
+      }
+    ]
+  },
+  "/jwt/nbf-future": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "JWT_NOT_YET_VALID",
+        "severity": "low",
+        "location": "Claim: nbf"
+      }
+    ]
   }
 }
