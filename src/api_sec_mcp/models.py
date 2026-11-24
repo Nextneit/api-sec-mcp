@@ -62,12 +62,22 @@ def sanitize_evidence(val: str | None) -> str | None:
 
 
 class Finding(BaseModel):
-    """A single security audit finding."""
+    """
+    A single factual security finding formatted for swift human validation.
+
+    Designed for pentesting teams to review immediately without ambiguity:
+    - rule: Closed enum identifying the specific vulnerability check.
+    - severity: Normalized severity level.
+    - location: Specific parameter, header, endpoint, or token component affected.
+    - description: Concise technical description.
+    - evidence: Sanitized, bounded evidence extracted from the target response.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     rule: RuleId
     severity: Severity
+    location: str = Field(default="", max_length=128, description="Target component: header, claim, param, etc.")
     description: str = Field(..., max_length=256)
     evidence: str | None = Field(default=None, max_length=128)
 
