@@ -23,6 +23,7 @@ from urllib.parse import urlparse, urlunparse
 import httpx
 
 from api_sec_mcp.audit.logger import AuditLog, EventType
+from api_sec_mcp.egress.rate_limit import RateLimiter, RateLimitExceededError
 from api_sec_mcp.egress.scope_guard import CheckResult, ScopeGuard, ScopeViolationError
 
 
@@ -77,6 +78,7 @@ class EgressClient:
         transport: httpx.AsyncBaseTransport | None = None,
         verify: bool = True,
         audit: AuditLog | None = None,
+        limiter: RateLimiter | None = None,
     ) -> None:
         self._guard = scope_guard
         self._timeout = timeout
@@ -84,6 +86,7 @@ class EgressClient:
         self._transport = transport
         self.verify = verify
         self.audit = audit
+        self.limiter = limiter
 
     async def get(
         self,
@@ -129,24 +132,56 @@ class EgressClient:
             await self._record(EventType.EGRESS_BLOCKED, method=method, url=url, reason=exc.reason)
             raise
 
-        await self._record(
-            EventType.EGRESS_ALLOWED, method=method, url=url,
-            host=check_result.host, resolved_ip=check_result.resolved_ip,
-        )
+        lease = None
+        if self.limiter is not None:
+            try:
+                lease = self.limiter.acquire(check_result.host)
+            except RateLimitExceededError as exc:
+                await self._record(
+                    EventType.EGRESS_RATE_LIMITED, method=method, url=url,
+                    host=check_result.host, reason=exc.kind.value,
+                )
+                raise
         try:
-            response = await self._send(method, url, headers, content, check_result)
-        except EgressError as exc:
+            try:
+                await self._record(
+                    EventType.EGRESS_ALLOWED, method=method, url=url,
+                    host=check_result.host, resolved_ip=check_result.resolved_ip,
+                )
+            except BaseException:
+                if lease is not None:
+                    lease.cancel()  # nothing was sent: refund the budget
+                raise
+            try:
+                response = await self._send(method, url, headers, content, check_result)
+            except EgressError as exc:
+                await self._record(
+                    EventType.EGRESS_ERROR, method=method, url=url,
+                    reason=type(exc).__name__, duration_ms=_elapsed_ms(started),
+                )
+                raise
             await self._record(
-                EventType.EGRESS_ERROR, method=method, url=url,
-                reason=type(exc).__name__, duration_ms=_elapsed_ms(started),
+                EventType.EGRESS_COMPLETED, method=method, url=url,
+                status_code=response.status_code, bytes_read=len(response.content),
+                duration_ms=_elapsed_ms(started),
+            )
+            return response
+        finally:
+            if lease is not None:
+                lease.release()
+
+    async def ensure_capacity(self, url: str, n: int) -> None:
+        """Fail before sending anything if *n* sequential requests would exceed a limit."""
+        if self.limiter is None:
+            return
+        host = (urlparse(url).hostname or "").lower()
+        try:
+            self.limiter.check_capacity(host, n)
+        except RateLimitExceededError as exc:
+            await self._record(
+                EventType.EGRESS_RATE_LIMITED, url=url, host=host, reason=exc.kind.value
             )
             raise
-        await self._record(
-            EventType.EGRESS_COMPLETED, method=method, url=url,
-            status_code=response.status_code, bytes_read=len(response.content),
-            duration_ms=_elapsed_ms(started),
-        )
-        return response
 
     async def _record(self, event: EventType, **fields: Any) -> None:  # noqa: ANN401
         if self.audit is not None:

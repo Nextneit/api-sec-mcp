@@ -30,6 +30,7 @@ In an automated pentest engagement, an LLM agent requires capabilities to probe 
 | **Denial of Service / Decompression bombs** — target sends infinite byte streams, huge Content-Length, or gzip bombs | The client checks `Content-Length` upfront before reading, truncates infinite chunk generators at `max_response_bytes`, and measures decompressed bytes for encoded responses. |
 | **Operator / Scope breach** — attempts to scan an asset outside the agreed engagement scope | `ScopeGuard` operates independently of MCP. `scope.yaml` must be provided explicitly with an explicit allowlist (deny-by-default). |
 | **Repudiation / unverifiable engagement** — no proof of what the agent touched or what was refused | Every egress decision (blocked / allowed / completed / error) and tool call is appended to a hash-chained JSONL audit log (`audit_log_path`). Metadata only: query strings, headers, bodies and JWT contents are never logged. **Audit-or-deny:** if the log cannot be written, the request is not sent. Verify with `uv run api-sec-verify [audit.jsonl]`. |
+| **Runaway agent / target DoS** — a looping or injected agent hammers the target (e.g. `audit_cors` = 4 requests per call) | `RateLimiter` enforces a total engagement budget, a per-host sliding window and a global concurrency cap. Fail-fast with a closed error (`TOTAL_BUDGET`, `HOST_RATE`, `CONCURRENCY`) and every rejection audited as `EGRESS_RATE_LIMITED`. The budget survives restarts (recovered from the audit log). Multi-request tools check capacity up front (all-or-nothing). |
 
 ### Out of scope (documented, not mitigated here)
 
@@ -58,6 +59,9 @@ allowed_schemes:
 max_response_bytes: 1048576
 request_timeout_seconds: 10
 audit_log_path: audit.jsonl   # append-only, hash-chained, 0600
+max_requests_total: 1000                 # engagement budget (survives restarts)
+max_requests_per_host_per_minute: 60
+max_concurrent_requests: 4
 ```
 
 ---
@@ -161,13 +165,14 @@ uv sync --all-groups
 uv run pytest tests/ -v
 ```
 
-Current test suite covers **158 tests**:
+Current test suite covers **190 tests**:
 - **`tests/test_scope_guard.py`** (52 tests): Engagement scope enforcement, cloud metadata hard blocks, alternate encodings, IPv6, CIDR matching, port/scheme filtering, and DNS rebinding protections.
 - **`tests/test_egress_client.py`** (6 tests): Basic egress transport mocking, Host header preservation, size limits, and non-following of redirects.
 - **`tests/test_egress_client_hardening.py`** (22 tests): SNI extensions, TLS verification guarantee, Content-Length aborts, infinite streaming cutoffs, gzip bomb protection, multi-header preservation (`Set-Cookie`), and public method bypass prevention (verified via mutation testing).
 - **`tests/test_jwt_audit.py`** and **`tests/test_spec001_hardening.py`**: JWT checks, bounded/sanitized output, never-raise guarantees, scope-config wiring, fail-closed scope loading, non-blocking DNS (see [`specs/001-hardening.md`](specs/001-hardening.md)).
 - **`tests/test_spec002_audit.py`**: audit trail (atomic JSONL writes, URL redaction, audit-or-deny, hash-chain verification; see [`specs/002-audit-log.md`](specs/002-audit-log.md)).
 - **`tests/test_spec003_cors.py`**: probe set and cap, classification table, preflight, bounded output, scope-violation behavior, audited MCP tool.
+- **`tests/test_spec004_rate_limit.py`**: config validation, sliding window with fake clock, budget persistence via audit log, concurrency release on error/cancel, audited rejections, all-or-nothing CORS.
 - **`tests/test_headers_tool.py`** (5 tests): Security header evaluations, version leaks, HSTS duration checks, and scope guard enforcement.
 
 ---

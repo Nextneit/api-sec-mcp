@@ -65,6 +65,9 @@ class ScopeConfig(BaseModel):
     max_response_bytes: int = Field(default=1_048_576, gt=0)
     request_timeout_seconds: int = Field(default=10, gt=0)
     audit_log_path: str = Field(default="audit.jsonl", min_length=1)
+    max_requests_total: int = Field(default=1000, gt=0)
+    max_requests_per_host_per_minute: int = Field(default=60, gt=0)
+    max_concurrent_requests: int = Field(default=4, gt=0)
 
 
 class CheckResult(NamedTuple):

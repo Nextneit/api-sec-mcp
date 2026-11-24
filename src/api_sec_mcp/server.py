@@ -14,6 +14,7 @@ from fastmcp import FastMCP
 
 from api_sec_mcp.audit.logger import AuditLog, EventType, current_tool
 from api_sec_mcp.egress.client import EgressClient
+from api_sec_mcp.egress.rate_limit import RateLimiter
 from api_sec_mcp.egress.scope_guard import ScopeConfig, ScopeGuard
 from api_sec_mcp.models import CorsReport, HeadersReport, JwtReport
 from api_sec_mcp.tools.cors import inspect_cors
@@ -43,11 +44,16 @@ def load_scope_guard(config_path: Path | str | None = None) -> ScopeGuard:
 
 def build_egress_client(guard: ScopeGuard) -> EgressClient:
     """Build the egress client honoring limits declared in the scope config."""
+    config = guard.config
+    audit = AuditLog(config.audit_log_path)
+    # The budget survives restarts: already-spent requests are recovered from the audit log.
+    limiter = RateLimiter(config, used=audit.count(EventType.EGRESS_ALLOWED))
     return EgressClient(
         scope_guard=guard,
-        timeout=float(guard.config.request_timeout_seconds),
-        max_response_bytes=guard.config.max_response_bytes,
-        audit=AuditLog(guard.config.audit_log_path),
+        timeout=float(config.request_timeout_seconds),
+        max_response_bytes=config.max_response_bytes,
+        audit=audit,
+        limiter=limiter,
     )
 
 

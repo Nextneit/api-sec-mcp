@@ -45,3 +45,10 @@ request_timeout_seconds: 10
 # Optional: append-only, hash-chained audit trail (default: audit.jsonl).
 # Metadata only; never headers, bodies, query strings or tokens.
 audit_log_path: audit.jsonl
+
+# Optional request limits enforced by the gateway (fail-fast, never queued).
+# Out-of-scope requests never consume budget; failed requests do.
+# The total budget survives restarts (recovered from the audit log).
+max_requests_total: 1000
+max_requests_per_host_per_minute: 60
+max_concurrent_requests: 4

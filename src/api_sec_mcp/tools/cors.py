@@ -88,6 +88,7 @@ def _classify_preflight(origin: str, resp: EgressResponse) -> list[Finding]:
 
 async def inspect_cors(url: str, client: EgressClient) -> CorsReport:
     """Run the fixed CORS probe set against *url* through the guarded egress client."""
+    await client.ensure_capacity(url, MAX_PROBES)  # all-or-nothing (SPEC-004 R6)
     parsed = urlparse(url)
     scheme = parsed.scheme if parsed.scheme in ("http", "https") else "https"
     host = safe_label(parsed.hostname or "", 253)

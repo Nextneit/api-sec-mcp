@@ -13,6 +13,7 @@ import asyncio
 import hashlib
 import json
 import os
+from collections import Counter
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -41,6 +42,7 @@ class EventType(StrEnum):
     EGRESS_ALLOWED = "EGRESS_ALLOWED"
     EGRESS_COMPLETED = "EGRESS_COMPLETED"
     EGRESS_ERROR = "EGRESS_ERROR"
+    EGRESS_RATE_LIMITED = "EGRESS_RATE_LIMITED"
 
 
 def redact_url(url: str) -> str:
@@ -119,6 +121,7 @@ class AuditLog:
         self._lock = asyncio.Lock()
         self._seq = 0
         self._prev = GENESIS_HASH
+        self._counts: Counter[str] = Counter()
         try:
             if self._path.exists():
                 last = None
@@ -126,12 +129,17 @@ class AuditLog:
                     for line in f:
                         if line.strip():
                             last = line.rstrip("\n")
+                            self._counts[json.loads(last)["event"]] += 1
                 if last:
                     self._seq = json.loads(last)["seq"] + 1
                     self._prev = _digest(last)
             self._fd = os.open(self._path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
         except (OSError, ValueError, KeyError) as exc:
             raise AuditError(f"Cannot open audit log: {type(exc).__name__}") from exc
+
+    def count(self, event: EventType) -> int:
+        """Events of this type seen when the log was opened plus those recorded since."""
+        return self._counts[event.value]
 
     async def record(self, event: EventType, **fields: Any) -> None:  # noqa: ANN401
         async with self._lock:
@@ -151,6 +159,7 @@ class AuditLog:
             except Exception as exc:
                 raise AuditError(f"Audit write failed: {type(exc).__name__}") from exc
             self._seq += 1
+            self._counts[event.value] += 1
             self._prev = _digest(line)
 
 
