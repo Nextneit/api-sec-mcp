@@ -8,3 +8,4 @@ __pycache__/
 scope.yaml
 dist/
 *.egg-info/audit.jsonl
+audit.lab.jsonl

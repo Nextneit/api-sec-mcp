@@ -1,0 +1,8 @@
+# Target lab: intentionally vulnerable. Published on loopback only; never change this to 0.0.0.0.
+services:
+  lab:
+    build:
+      context: .
+      dockerfile: target/Dockerfile
+    ports:
+      - "127.0.0.1:8099:8099"

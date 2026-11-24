@@ -1,0 +1,9 @@
+# Scope for the local target lab (docker compose up). Use: cp scope.lab.yaml scope.yaml
+allowed_ips:
+  - "127.0.0.1"
+allowed_ports:
+  - 8099
+allowed_schemes:
+  - http
+audit_log_path: audit.lab.jsonl
+max_requests_total: 1000

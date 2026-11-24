@@ -26,12 +26,15 @@ packages = ["src/api_sec_mcp"]
 
 [dependency-groups]
 dev = [
+    "fastapi>=0.165.0",
     "pytest>=8.2",
     "pytest-asyncio>=0.23",
     "ruff>=0.4",
+    "uvicorn>=0.54.0",
 ]
 
 [tool.pytest.ini_options]
+markers = ["integration: real sockets against the target lab (offline, loopback only)"]
 filterwarnings = ["ignore::jwt.warnings.InsecureKeyLengthWarning"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
@@ -46,7 +49,8 @@ select = ["E", "F", "I", "UP", "S", "ANN"]
 ignore = ["ANN101", "ANN102"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["ANN", "S101", "S105", "S106", "E501"]
+"tests/**" = ["ANN", "S101", "S104", "S105", "S106", "E501"]
+"target/**" = ["ANN", "S105", "E501"]  # intentionally vulnerable lab (fixed public secrets)
 "src/api_sec_mcp/tools/*" = ["E501"]
 "src/api_sec_mcp/egress/*" = ["E501"]
 "src/api_sec_mcp/server.py" = ["ANN401"]

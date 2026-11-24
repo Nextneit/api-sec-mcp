@@ -144,7 +144,7 @@ The MCP server exposes specific reconnaissance and assessment tools designed for
 ## Roadmap
 
 - [ ] **Recurring Diff Engine (Engagement Tracking):** Compare weekly assessment runs against the same target using deterministic rule IDs to highlight newly introduced vulnerabilities and verify remediations.
-- [ ] **Target Lab (`target/`):** Dockerized vulnerable FastAPI environment to execute controlled proof-of-concept assessments.
+- [x] **Target Lab (`target/`):** Deterministic vulnerable FastAPI environment with golden findings (see below).
 - [ ] **Secondary Sanitizer Guard (`guards/sanitizer.py`):** Pattern-based heuristic scanner alerting on suspicious prompt-injection payloads in evidence values.
 
 ---
@@ -165,7 +165,7 @@ uv sync --all-groups
 uv run pytest tests/ -v
 ```
 
-Current test suite covers **190 tests**:
+Current test suite covers **248 tests**:
 - **`tests/test_scope_guard.py`** (52 tests): Engagement scope enforcement, cloud metadata hard blocks, alternate encodings, IPv6, CIDR matching, port/scheme filtering, and DNS rebinding protections.
 - **`tests/test_egress_client.py`** (6 tests): Basic egress transport mocking, Host header preservation, size limits, and non-following of redirects.
 - **`tests/test_egress_client_hardening.py`** (22 tests): SNI extensions, TLS verification guarantee, Content-Length aborts, infinite streaming cutoffs, gzip bomb protection, multi-header preservation (`Set-Cookie`), and public method bypass prevention (verified via mutation testing).
@@ -173,7 +173,29 @@ Current test suite covers **190 tests**:
 - **`tests/test_spec002_audit.py`**: audit trail (atomic JSONL writes, URL redaction, audit-or-deny, hash-chain verification; see [`specs/002-audit-log.md`](specs/002-audit-log.md)).
 - **`tests/test_spec003_cors.py`**: probe set and cap, classification table, preflight, bounded output, scope-violation behavior, audited MCP tool.
 - **`tests/test_spec004_rate_limit.py`**: config validation, sliding window with fake clock, budget persistence via audit log, concurrency release on error/cancel, audited rejections, all-or-nothing CORS.
+- **`tests/integration/`** (marked `integration`) and **`tests/test_lab_packaging.py`**: real sockets and a real MCP client against the Target Lab. Golden findings, hostile-content containment, redirect not followed, size/timeout limits, full engagement audit consistency and loopback-only packaging (see [`specs/005-target-lab.md`](specs/005-target-lab.md)).
 - **`tests/test_headers_tool.py`** (5 tests): Security header evaluations, version leaks, HSTS duration checks, and scope guard enforcement.
+
+---
+
+## Target Lab
+
+[`target/`](target/README.md) is a **deliberately vulnerable**, deterministic FastAPI app: insecure and secure header
+profiles, six CORS behaviors, five JWT profiles, hostile content (prompt injection in body and headers), a redirect
+to the cloud-metadata IP, and oversize / gzip-bomb / endless / slow responses. Expected findings per route live in
+[`target/expected.json`](target/expected.json) and are the golden reference for the tests.
+
+```bash
+# Integration tests (spawn the lab in-process on 127.0.0.1, no Docker needed)
+uv run pytest -m integration -v
+
+# Manual demo
+uv run python -m target.run            # or: docker compose up --build   (published on 127.0.0.1:8099 only)
+cp scope.lab.yaml scope.yaml
+npx @modelcontextprotocol/inspector uv run api-sec-mcp
+```
+
+The lab refuses to bind anywhere but loopback (outside the container) and holds no real secrets.
 
 ---
 

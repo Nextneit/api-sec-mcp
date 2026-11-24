@@ -19,6 +19,19 @@ import re
 from api_sec_mcp.egress.client import EgressClient
 from api_sec_mcp.models import Finding, HeadersReport, RuleId, Severity
 
+# A banner is reduced to a single ``product[/version]`` token so target text never reaches the report.
+_BANNER_RE = re.compile(
+    r"^([A-Za-z][A-Za-z0-9_.\-]{0,31})(?![A-Za-z0-9_.\-])(?:/([0-9][A-Za-z0-9._\-]{0,15})(?![A-Za-z0-9._\-]))?"
+)
+
+
+def _banner_evidence(value: str) -> str:
+    match = _BANNER_RE.match(value.strip())
+    if not match:
+        return "unrecognized"
+    return match.group(1) + (f"/{match.group(2)}" if match.group(2) else "")
+
+
 # Recommended headers and weights for score computation (100 max)
 _RECOMMENDED_HEADERS = {
     "strict-transport-security": ("Strict-Transport-Security", 25, RuleId.HSTS_MISSING, Severity.HIGH),
@@ -90,7 +103,7 @@ async def inspect_security_headers(
                     severity=Severity.LOW,
                     location="Header: Server",
                     description="Server header exposes specific product version banner",
-                    evidence=server_banner,
+                    evidence=_banner_evidence(server_banner),
                 )
             )
 
@@ -103,7 +116,7 @@ async def inspect_security_headers(
                 severity=Severity.LOW,
                 location="Header: X-Powered-By",
                 description="X-Powered-By header leaks server-side technology details",
-                evidence=powered_by,
+                evidence=_banner_evidence(powered_by),
             )
         )
 

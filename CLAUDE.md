@@ -6,7 +6,8 @@ anti-SSRF, bounded factual output), not the checks. Read README.md for the threa
 
 ## Commands
 - Install: `uv sync --all-groups`
-- Test: `uv run pytest -q` (offline only; uses fake resolvers and `httpx.MockTransport`)
+- Test: `uv run pytest -q` (offline only: mocks for unit tests, loopback-only target lab for `integration`)
+- Integration only: `uv run pytest -m integration` (starts `target/app.py` on an ephemeral 127.0.0.1 port)
 - Lint: `uv run ruff check src tests` (must be clean before committing)
 - Run server: `uv run api-sec-mcp` (needs `scope.yaml`; there is deliberately no fallback)
 
@@ -16,7 +17,10 @@ anti-SSRF, bounded factual output), not the checks. Read README.md for the threa
 - `tools/*.py` — one module per audit tool; take an `EgressClient` (or plain input) and return a pydantic report.
 - `models.py` — `Finding`, reports, closed enums (`RuleId`, `Severity`), `safe_label`, `sanitize_evidence`.
 - `server.py` — FastMCP wiring only; no logic.
-- `audit/`, `guards/` — planned (see specs/).
+- `audit/logger.py` — hash-chained JSONL audit log (`api-sec-verify` checks it). `egress/rate_limit.py` — budget/rate limits.
+- `guards/` — planned (SPEC-006 sanitizer).
+- `target/` — INTENTIONALLY VULNERABLE lab + `expected.json` golden findings. Never bind it beyond loopback; never import it from `src/`.
+- `specs/` — numbered specs; `status` in the header says whether a spec may be implemented.
 
 ## Security invariants (never break; add a test when touching them)
 1. No network I/O outside `EgressClient`; every request goes through `ScopeGuard.check` first.
@@ -28,6 +32,8 @@ anti-SSRF, bounded factual output), not the checks. Read README.md for the threa
 5. Tools must not raise on hostile input; return a report with findings instead.
 6. Fail closed: missing/invalid scope → refuse to start. No example-file fallback.
 7. Blocking calls (DNS) stay off the event loop (`asyncio.to_thread`).
+8. Every egress decision is audited before the request is sent (audit-or-deny); limits are fail-fast.
+9. When a rule's severity/location changes, update `target/expected.json` in the same commit.
 
 ## Workflow: Spec-Driven Development
 Non-trivial work follows `specs/NNN-name.md` → tests (red) → code (green) → README/ruff → commit.
