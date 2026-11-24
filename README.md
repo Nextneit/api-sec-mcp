@@ -1,5 +1,9 @@
 # api-sec-mcp
 
+[![CI](https://github.com/Nextneit/api-sec-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Nextneit/api-sec-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+
 > **Security gateway between an autonomous web/API pentesting agent and an authorized target, exposed as an MCP server.**
 
 ---
@@ -133,7 +137,7 @@ results_dir: results                     # scan snapshots, one JSONL per run (gi
 
 ## Pentesting Tools
 
-The MCP server exposes specific reconnaissance and assessment tools designed for web and API pentesting:
+The MCP server exposes specific configuration and token assessment tools designed for web and API pentesting:
 
 1. **`audit_security_headers(url)`**:
    Audits HTTP response headers on the target. Evaluates HSTS presence and `max-age` strength, CSP enforcement, `X-Frame-Options` (clickjacking defense), `X-Content-Type-Options` (`nosniff`), `Referrer-Policy`, and technology banner leaks (`Server`, `X-Powered-By`).
@@ -141,6 +145,35 @@ The MCP server exposes specific reconnaissance and assessment tools designed for
    Offline, token-only audit. Detects `alg=none`; weak HMAC secrets (curated ~350-entry dictionary, signature checked once per secret, hard cap 2000); header key-injection vectors (`jku`/`x5u` remote key URLs, `jwk`/`x5c` embedded keys, `kid` path traversal/injection, `crit`); missing `aud`/`iss`; `nbf` in the future; inconsistent timestamps; missing/expired/over-long `exp`; and sensitive claim names. It never fetches a `jku` URL (that would be an SSRF primitive controlled by the token) and never echoes target values. Algorithm confusion is out of scope until the operator can supply the server's public key. Spec: [`specs/007-jwt-extra-checks.md`](specs/007-jwt-extra-checks.md).
 3. **`audit_cors(url)`**:
    Audits CORS with a **fixed** set of 4 probes (arbitrary origin, `null`, look-alike suffix domain, and a `PUT` preflight). The agent cannot supply origins. Detects wildcard origins (with/without credentials), arbitrary reflection, `null` origin, weak origin validation and permissive preflights. Target header values are never echoed; evidence is a fixed label. Spec: [`specs/003-cors.md`](specs/003-cors.md).
+
+---
+
+## Known limitations
+
+This is a pre-1.0 project. What it does not do today:
+
+- **No authenticated requests.** Tools take only a URL: the operator cannot yet supply auth headers or cookies, so authenticated APIs cannot be audited. (When added it must be operator configuration, never agent input.)
+- **Redirects are not followed.** Auditing `http://...` reports the `301`, not the final page; give the final URL.
+- **Three tools, configuration-level only.** Security headers, CORS and JWT. There is no reconnaissance, authorization testing, injection testing or business-logic testing, and no generic "fetch" tool for the agent (by design).
+- **One connection IP.** Every resolved address is validated, but the connection uses the first one; there is no fallback to the others.
+- **The output guard is heuristic and English-only.** It is defense in depth; the real boundaries are the charset/length limits and closed enums.
+- **Audit log and results assume a trusted host.** The log is hash-chained; scan snapshots in `results/` are validated on load but not signed. Truncating the tail of the log is not detectable.
+- **JWT audits are not diffed** (a token has no stable target) and algorithm-confusion testing is not covered.
+- **TLS is covered by mocks and a manual check against a public server.** The bundled lab is plain HTTP.
+- **Validated with programmatic MCP clients and one manual agent session**, not with a broad range of agents or models.
+
+---
+
+## Responsible use
+
+`api-sec-mcp` is a defensive gateway for **authorized** security testing. Use it only against systems you own or
+have explicit written permission to test, and keep `scope.yaml` limited to what the engagement authorizes. The
+gateway reduces risk (scope enforcement, request budget, audit trail); it does not make an unauthorized test lawful.
+The bundled target lab is intentionally vulnerable: it binds to loopback only and must never be exposed further.
+To report a problem in this project, see [`SECURITY.md`](SECURITY.md).
+
+This is an independent personal project. It is not affiliated with, endorsed by or derived from any company's
+product or service.
 
 ---
 
@@ -241,3 +274,9 @@ uv run api-sec-mcp
 # Or inspect interactively with MCP Inspector
 npx @modelcontextprotocol/inspector uv run api-sec-mcp
 ```
+
+---
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

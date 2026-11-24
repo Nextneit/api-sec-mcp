@@ -17,6 +17,10 @@ dependencies = [
     "pyjwt>=2.8",
 ]
 
+[project.urls]
+Repository = "https://github.com/Nextneit/api-sec-mcp"
+Issues = "https://github.com/Nextneit/api-sec-mcp/issues"
+
 [project.scripts]
 api-sec-mcp = "api_sec_mcp.server:main"
 api-sec-verify = "api_sec_mcp.audit.logger:main"
