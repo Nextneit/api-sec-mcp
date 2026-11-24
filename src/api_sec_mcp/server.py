@@ -15,7 +15,8 @@ from fastmcp import FastMCP
 from api_sec_mcp.audit.logger import AuditLog, EventType, current_tool
 from api_sec_mcp.egress.client import EgressClient
 from api_sec_mcp.egress.scope_guard import ScopeConfig, ScopeGuard
-from api_sec_mcp.models import HeadersReport, JwtReport
+from api_sec_mcp.models import CorsReport, HeadersReport, JwtReport
+from api_sec_mcp.tools.cors import inspect_cors
 from api_sec_mcp.tools.headers import inspect_security_headers
 from api_sec_mcp.tools.jwt_audit import audit_jwt
 
@@ -68,6 +69,23 @@ async def audit_security_headers(url: str) -> dict:
     token = current_tool.set("audit_security_headers")
     try:
         report: HeadersReport = await inspect_security_headers(url=url, client=client)
+        await _record_tool_call(client, url=url, findings=len(report.findings))
+    finally:
+        current_tool.reset(token)
+    return report.model_dump()
+
+
+@mcp.tool()
+async def audit_cors(url: str) -> dict:
+    """
+    Audit CORS configuration of an authorized target URL using a fixed set of
+    4 origin probes (arbitrary, null, look-alike suffix, preflight).
+    Returns a typed, bounded security report.
+    """
+    client = get_egress_client()
+    token = current_tool.set("audit_cors")
+    try:
+        report: CorsReport = await inspect_cors(url=url, client=client)
         await _record_tool_call(client, url=url, findings=len(report.findings))
     finally:
         current_tool.reset(token)

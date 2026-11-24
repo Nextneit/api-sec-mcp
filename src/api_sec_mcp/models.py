@@ -47,6 +47,15 @@ class RuleId(StrEnum):
     JWT_SENSITIVE_CLAIM_LEAK = "JWT_SENSITIVE_CLAIM_LEAK"
     JWT_MALFORMED_STRUCTURE = "JWT_MALFORMED_STRUCTURE"
 
+    # CORS audit rules
+    CORS_WILDCARD_ORIGIN = "CORS_WILDCARD_ORIGIN"
+    CORS_WILDCARD_WITH_CREDENTIALS = "CORS_WILDCARD_WITH_CREDENTIALS"
+    CORS_ORIGIN_REFLECTION = "CORS_ORIGIN_REFLECTION"
+    CORS_REFLECTION_WITH_CREDENTIALS = "CORS_REFLECTION_WITH_CREDENTIALS"
+    CORS_NULL_ORIGIN_ALLOWED = "CORS_NULL_ORIGIN_ALLOWED"
+    CORS_WEAK_ORIGIN_VALIDATION = "CORS_WEAK_ORIGIN_VALIDATION"
+    CORS_PREFLIGHT_PERMISSIVE = "CORS_PREFLIGHT_PERMISSIVE"
+
     # Generic / egress violations
     SCOPE_VIOLATION = "SCOPE_VIOLATION"
     RESPONSE_TOO_LARGE = "RESPONSE_TOO_LARGE"
@@ -138,5 +147,16 @@ class JwtReport(BaseModel):
         default_factory=list,
         description="List of claim keys detected in payload (keys only, not values)",
     )
+    findings: list[Finding] = Field(default_factory=list)
+    score: int = Field(..., ge=0, le=100, description="Security score from 0 to 100")
+
+
+class CorsReport(BaseModel):
+    """Structured report of CORS probing. Raw target header values never appear here."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    target_url: str = Field(..., max_length=2048)
+    probes_sent: int = Field(..., ge=0)
     findings: list[Finding] = Field(default_factory=list)
     score: int = Field(..., ge=0, le=100, description="Security score from 0 to 100")
