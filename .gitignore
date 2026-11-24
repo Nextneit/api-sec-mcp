@@ -7,5 +7,6 @@ __pycache__/
 .ruff_cache/
 scope.yaml
 dist/
-*.egg-info/audit.jsonl
+*.egg-info/
+audit.jsonl
 audit.lab.jsonl
