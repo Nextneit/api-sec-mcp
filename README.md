@@ -180,7 +180,7 @@ Current test suite covers **469 tests**:
 - **`tests/test_spec006_sanitizer.py`**: pattern table (positive spellings and near-misses per pattern), zero false positives on known-good evidence, redaction/finding behavior, audited choke point; lab routes `/hostile/token` and `/jwt/hostile-claim` in `tests/integration/`.
 - **`tests/test_spec007_jwt.py`**: header vectors, claim binding, time consistency, extended dictionary (file quality, speed, cap), scoring; six new JWT lab profiles with golden findings.
 - **`tests/test_spec008_diff.py`** and the lab drift test in `tests/integration/`: target normalization, result store (concurrency, tamper detection, run-id traversal), diff categories, "absence is not remediation", determinism under shuffling, CLI exit codes, and a real two-week diff against the lab in both directions.
-- **`tests/test_headers_tool.py`** (5 tests): Security header evaluations, version leaks, HSTS duration checks, and scope guard enforcement.
+- **`tests/test_headers_tool.py`** (12 tests): Security header evaluations, version leaks, HSTS duration checks, and scope guard enforcement.
 
 ---
 
