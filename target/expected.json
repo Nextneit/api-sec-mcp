@@ -1,42 +1,209 @@
 {
-  "/headers/insecure": {"tool": "audit_security_headers", "findings": [
-    {"rule": "CSP_MISSING", "severity": "high", "location": "Header: Content-Security-Policy"},
-    {"rule": "X_FRAME_OPTIONS_MISSING", "severity": "medium", "location": "Header: X-Frame-Options"},
-    {"rule": "X_CONTENT_TYPE_OPTIONS_MISSING", "severity": "medium", "location": "Header: X-Content-Type-Options"},
-    {"rule": "REFERRER_POLICY_MISSING", "severity": "low", "location": "Header: Referrer-Policy"},
-    {"rule": "HSTS_SHORT_MAX_AGE", "severity": "low", "location": "Header: Strict-Transport-Security (max-age directive)"},
-    {"rule": "SERVER_BANNER_LEAK", "severity": "low", "location": "Header: Server"},
-    {"rule": "POWERED_BY_LEAK", "severity": "low", "location": "Header: X-Powered-By"}
-  ]},
-  "/headers/secure": {"tool": "audit_security_headers", "findings": []},
-  "/cors/reflect": {"tool": "audit_cors", "findings": [
-    {"rule": "CORS_REFLECTION_WITH_CREDENTIALS", "severity": "critical", "location": "Header: Access-Control-Allow-Origin (probe: arbitrary)"},
-    {"rule": "CORS_NULL_ORIGIN_ALLOWED", "severity": "high", "location": "Header: Access-Control-Allow-Origin (probe: null)"}
-  ]},
-  "/cors/wildcard": {"tool": "audit_cors", "findings": [
-    {"rule": "CORS_WILDCARD_ORIGIN", "severity": "low", "location": "Header: Access-Control-Allow-Origin (probe: arbitrary)"}
-  ]},
-  "/cors/null": {"tool": "audit_cors", "findings": [
-    {"rule": "CORS_NULL_ORIGIN_ALLOWED", "severity": "high", "location": "Header: Access-Control-Allow-Origin (probe: null)"}
-  ]},
-  "/cors/suffix": {"tool": "audit_cors", "findings": [
-    {"rule": "CORS_WEAK_ORIGIN_VALIDATION", "severity": "high", "location": "Header: Access-Control-Allow-Origin (probe: suffix)"}
-  ]},
-  "/cors/preflight": {"tool": "audit_cors", "findings": [
-    {"rule": "CORS_PREFLIGHT_PERMISSIVE", "severity": "medium", "location": "Header: Access-Control-Allow-Methods (probe: preflight)"}
-  ]},
-  "/cors/secure": {"tool": "audit_cors", "findings": []},
-  "/jwt/weak-secret": {"tool": "audit_json_web_token", "findings": [
-    {"rule": "JWT_WEAK_HMAC_KEY", "severity": "critical", "location": "Signature"}
-  ]},
-  "/jwt/alg-none": {"tool": "audit_json_web_token", "findings": [
-    {"rule": "JWT_ALG_NONE", "severity": "critical", "location": "Header: alg"}
-  ]},
-  "/jwt/no-exp": {"tool": "audit_json_web_token", "findings": [
-    {"rule": "JWT_NO_EXPIRY", "severity": "high", "location": "Claim: exp"}
-  ]},
-  "/jwt/sensitive-claim": {"tool": "audit_json_web_token", "findings": [
-    {"rule": "JWT_SENSITIVE_CLAIM_LEAK", "severity": "medium", "location": "Claim: password"}
-  ]},
-  "/jwt/secure": {"tool": "audit_json_web_token", "findings": []}
+  "/headers/insecure": {
+    "tool": "audit_security_headers",
+    "findings": [
+      {
+        "rule": "CSP_MISSING",
+        "severity": "high",
+        "location": "Header: Content-Security-Policy"
+      },
+      {
+        "rule": "X_FRAME_OPTIONS_MISSING",
+        "severity": "medium",
+        "location": "Header: X-Frame-Options"
+      },
+      {
+        "rule": "X_CONTENT_TYPE_OPTIONS_MISSING",
+        "severity": "medium",
+        "location": "Header: X-Content-Type-Options"
+      },
+      {
+        "rule": "REFERRER_POLICY_MISSING",
+        "severity": "low",
+        "location": "Header: Referrer-Policy"
+      },
+      {
+        "rule": "HSTS_SHORT_MAX_AGE",
+        "severity": "low",
+        "location": "Header: Strict-Transport-Security (max-age directive)"
+      },
+      {
+        "rule": "SERVER_BANNER_LEAK",
+        "severity": "low",
+        "location": "Header: Server"
+      },
+      {
+        "rule": "POWERED_BY_LEAK",
+        "severity": "low",
+        "location": "Header: X-Powered-By"
+      }
+    ]
+  },
+  "/headers/secure": {
+    "tool": "audit_security_headers",
+    "findings": []
+  },
+  "/cors/reflect": {
+    "tool": "audit_cors",
+    "findings": [
+      {
+        "rule": "CORS_REFLECTION_WITH_CREDENTIALS",
+        "severity": "critical",
+        "location": "Header: Access-Control-Allow-Origin (probe: arbitrary)"
+      },
+      {
+        "rule": "CORS_NULL_ORIGIN_ALLOWED",
+        "severity": "high",
+        "location": "Header: Access-Control-Allow-Origin (probe: null)"
+      }
+    ]
+  },
+  "/cors/wildcard": {
+    "tool": "audit_cors",
+    "findings": [
+      {
+        "rule": "CORS_WILDCARD_ORIGIN",
+        "severity": "low",
+        "location": "Header: Access-Control-Allow-Origin (probe: arbitrary)"
+      }
+    ]
+  },
+  "/cors/null": {
+    "tool": "audit_cors",
+    "findings": [
+      {
+        "rule": "CORS_NULL_ORIGIN_ALLOWED",
+        "severity": "high",
+        "location": "Header: Access-Control-Allow-Origin (probe: null)"
+      }
+    ]
+  },
+  "/cors/suffix": {
+    "tool": "audit_cors",
+    "findings": [
+      {
+        "rule": "CORS_WEAK_ORIGIN_VALIDATION",
+        "severity": "high",
+        "location": "Header: Access-Control-Allow-Origin (probe: suffix)"
+      }
+    ]
+  },
+  "/cors/preflight": {
+    "tool": "audit_cors",
+    "findings": [
+      {
+        "rule": "CORS_PREFLIGHT_PERMISSIVE",
+        "severity": "medium",
+        "location": "Header: Access-Control-Allow-Methods (probe: preflight)"
+      }
+    ]
+  },
+  "/cors/secure": {
+    "tool": "audit_cors",
+    "findings": []
+  },
+  "/jwt/weak-secret": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "JWT_WEAK_HMAC_KEY",
+        "severity": "critical",
+        "location": "Signature"
+      }
+    ]
+  },
+  "/jwt/alg-none": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "JWT_ALG_NONE",
+        "severity": "critical",
+        "location": "Header: alg"
+      }
+    ]
+  },
+  "/jwt/no-exp": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "JWT_NO_EXPIRY",
+        "severity": "high",
+        "location": "Claim: exp"
+      }
+    ]
+  },
+  "/jwt/sensitive-claim": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "JWT_SENSITIVE_CLAIM_LEAK",
+        "severity": "medium",
+        "location": "Claim: password"
+      }
+    ]
+  },
+  "/jwt/secure": {
+    "tool": "audit_json_web_token",
+    "findings": []
+  },
+  "/hostile/token": {
+    "tool": "audit_security_headers",
+    "findings": [
+      {
+        "rule": "HSTS_MISSING",
+        "severity": "high",
+        "location": "Header: Strict-Transport-Security"
+      },
+      {
+        "rule": "CSP_MISSING",
+        "severity": "high",
+        "location": "Header: Content-Security-Policy"
+      },
+      {
+        "rule": "X_FRAME_OPTIONS_MISSING",
+        "severity": "medium",
+        "location": "Header: X-Frame-Options"
+      },
+      {
+        "rule": "X_CONTENT_TYPE_OPTIONS_MISSING",
+        "severity": "medium",
+        "location": "Header: X-Content-Type-Options"
+      },
+      {
+        "rule": "REFERRER_POLICY_MISSING",
+        "severity": "low",
+        "location": "Header: Referrer-Policy"
+      },
+      {
+        "rule": "SERVER_BANNER_LEAK",
+        "severity": "low",
+        "location": "Header: Server"
+      },
+      {
+        "rule": "POWERED_BY_LEAK",
+        "severity": "low",
+        "location": "Header: X-Powered-By"
+      },
+      {
+        "rule": "OUTPUT_SUSPICIOUS_CONTENT",
+        "severity": "medium",
+        "location": "Field: findings[5].evidence"
+      },
+      {
+        "rule": "OUTPUT_SUSPICIOUS_CONTENT",
+        "severity": "medium",
+        "location": "Field: findings[6].evidence"
+      }
+    ]
+  },
+  "/jwt/hostile-claim": {
+    "tool": "audit_json_web_token",
+    "findings": [
+      {
+        "rule": "OUTPUT_SUSPICIOUS_CONTENT",
+        "severity": "medium",
+        "location": "Field: detected_claims[2]"
+      }
+    ]
+  }
 }

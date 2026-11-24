@@ -53,4 +53,5 @@ ignore = ["ANN101", "ANN102"]
 "target/**" = ["ANN", "S105", "E501"]  # intentionally vulnerable lab (fixed public secrets)
 "src/api_sec_mcp/tools/*" = ["E501"]
 "src/api_sec_mcp/egress/*" = ["E501"]
+"src/api_sec_mcp/guards/*" = ["E501"]  # regex tables
 "src/api_sec_mcp/server.py" = ["ANN401"]

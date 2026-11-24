@@ -18,7 +18,7 @@ anti-SSRF, bounded factual output), not the checks. Read README.md for the threa
 - `models.py` — `Finding`, reports, closed enums (`RuleId`, `Severity`), `safe_label`, `sanitize_evidence`.
 - `server.py` — FastMCP wiring only; no logic.
 - `audit/logger.py` — hash-chained JSONL audit log (`api-sec-verify` checks it). `egress/rate_limit.py` — budget/rate limits.
-- `guards/` — planned (SPEC-006 sanitizer).
+- `guards/sanitizer.py` — heuristic output guard (redact + `OUTPUT_SUSPICIOUS_CONTENT`); defense in depth only.
 - `target/` — INTENTIONALLY VULNERABLE lab + `expected.json` golden findings. Never bind it beyond loopback; never import it from `src/`.
 - `specs/` — numbered specs; `status` in the header says whether a spec may be implemented.
 
@@ -27,7 +27,8 @@ anti-SSRF, bounded factual output), not the checks. Read README.md for the threa
 2. Raw response bodies/headers never reach the LLM — tools return only `Finding`/report models.
 3. Any string derived from a target (header, claim, alg, URL, exception text) must be bounded and
    sanitized (`safe_label` / `sanitize_evidence`) before entering a report. Never echo library
-   exception messages.
+   exception messages. Every tool result must leave through `server._finish` (output guard); never
+   return a report from a tool directly.
 4. Rule IDs and severities come from closed enums, never from target content.
 5. Tools must not raise on hostile input; return a report with findings instead.
 6. Fail closed: missing/invalid scope → refuse to start. No example-file fallback.

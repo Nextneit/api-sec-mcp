@@ -43,6 +43,7 @@ class EventType(StrEnum):
     EGRESS_COMPLETED = "EGRESS_COMPLETED"
     EGRESS_ERROR = "EGRESS_ERROR"
     EGRESS_RATE_LIMITED = "EGRESS_RATE_LIMITED"
+    OUTPUT_FLAGGED = "OUTPUT_FLAGGED"
 
 
 def redact_url(url: str) -> str:

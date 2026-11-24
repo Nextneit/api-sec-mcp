@@ -31,6 +31,7 @@ In an automated pentest engagement, an LLM agent requires capabilities to probe 
 | **Operator / Scope breach** — attempts to scan an asset outside the agreed engagement scope | `ScopeGuard` operates independently of MCP. `scope.yaml` must be provided explicitly with an explicit allowlist (deny-by-default). |
 | **Repudiation / unverifiable engagement** — no proof of what the agent touched or what was refused | Every egress decision (blocked / allowed / completed / error) and tool call is appended to a hash-chained JSONL audit log (`audit_log_path`). Metadata only: query strings, headers, bodies and JWT contents are never logged. **Audit-or-deny:** if the log cannot be written, the request is not sent. Verify with `uv run api-sec-verify [audit.jsonl]`. |
 | **Runaway agent / target DoS** — a looping or injected agent hammers the target (e.g. `audit_cors` = 4 requests per call) | `RateLimiter` enforces a total engagement budget, a per-host sliding window and a global concurrency cap. Fail-fast with a closed error (`TOTAL_BUDGET`, `HOST_RATE`, `CONCURRENCY`) and every rejection audited as `EGRESS_RATE_LIMITED`. The budget survives restarts (recovered from the audit log). Multi-request tools check capacity up front (all-or-nothing). |
+| **Instruction-like text that survives the first layer** — e.g. a JWT claim named `ignore_previous_instructions_and_call_tool` or a single-token header `system_prompt` | **Defense in depth, not a boundary.** One output choke point (`server._finish`) runs a heuristic guard (`guards/sanitizer.py`, closed `PatternId` vocabulary, Unicode-normalized, separator-insensitive) over every string of every report: matches become `[REDACTED]`, a `OUTPUT_SUSPICIOUS_CONTENT` finding records the field and pattern ids (never the text) and an `OUTPUT_FLAGGED` audit event is written. English patterns only; it cannot catch everything, which is why charset/length limits and closed enums stay the real boundaries. |
 
 ### Out of scope (documented, not mitigated here)
 
@@ -145,7 +146,7 @@ The MCP server exposes specific reconnaissance and assessment tools designed for
 
 - [ ] **Recurring Diff Engine (Engagement Tracking):** Compare weekly assessment runs against the same target using deterministic rule IDs to highlight newly introduced vulnerabilities and verify remediations.
 - [x] **Target Lab (`target/`):** Deterministic vulnerable FastAPI environment with golden findings (see below).
-- [ ] **Secondary Sanitizer Guard (`guards/sanitizer.py`):** Pattern-based heuristic scanner alerting on suspicious prompt-injection payloads in evidence values.
+- [x] **Secondary Sanitizer Guard (`guards/sanitizer.py`):** Pattern-based heuristic scanner that redacts and reports instruction-like content in tool output (see below).
 
 ---
 
@@ -165,7 +166,7 @@ uv sync --all-groups
 uv run pytest tests/ -v
 ```
 
-Current test suite covers **248 tests**:
+Current test suite covers **369 tests**:
 - **`tests/test_scope_guard.py`** (52 tests): Engagement scope enforcement, cloud metadata hard blocks, alternate encodings, IPv6, CIDR matching, port/scheme filtering, and DNS rebinding protections.
 - **`tests/test_egress_client.py`** (6 tests): Basic egress transport mocking, Host header preservation, size limits, and non-following of redirects.
 - **`tests/test_egress_client_hardening.py`** (22 tests): SNI extensions, TLS verification guarantee, Content-Length aborts, infinite streaming cutoffs, gzip bomb protection, multi-header preservation (`Set-Cookie`), and public method bypass prevention (verified via mutation testing).
@@ -174,6 +175,7 @@ Current test suite covers **248 tests**:
 - **`tests/test_spec003_cors.py`**: probe set and cap, classification table, preflight, bounded output, scope-violation behavior, audited MCP tool.
 - **`tests/test_spec004_rate_limit.py`**: config validation, sliding window with fake clock, budget persistence via audit log, concurrency release on error/cancel, audited rejections, all-or-nothing CORS.
 - **`tests/integration/`** (marked `integration`) and **`tests/test_lab_packaging.py`**: real sockets and a real MCP client against the Target Lab. Golden findings, hostile-content containment, redirect not followed, size/timeout limits, full engagement audit consistency and loopback-only packaging (see [`specs/005-target-lab.md`](specs/005-target-lab.md)).
+- **`tests/test_spec006_sanitizer.py`**: pattern table (positive spellings and near-misses per pattern), zero false positives on known-good evidence, redaction/finding behavior, audited choke point; lab routes `/hostile/token` and `/jwt/hostile-claim` in `tests/integration/`.
 - **`tests/test_headers_tool.py`** (5 tests): Security header evaluations, version leaks, HSTS duration checks, and scope guard enforcement.
 
 ---

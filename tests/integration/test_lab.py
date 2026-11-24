@@ -72,6 +72,29 @@ async def test_r6_hostile_target_contained(lab, engagement, route, tool):
         assert len(f["evidence"] or "") <= 128
 
 
+@pytest.mark.parametrize(("route", "tool", "key"), [
+    ("/hostile/token", "audit_security_headers", "url"),
+])
+async def test_spec006_single_token_injection_neutralized(lab, engagement, route, tool, key):
+    eng = engagement()
+    report = await call_tool(tool, {key: lab.base + route})
+    blob = json.dumps(report) + eng.log_path.read_text()
+    # target text is gone (case-sensitive: pattern ids such as SYSTEM_PROMPT are our own vocabulary)
+    assert "Ignore_previous_instructions" not in blob and "system_prompt" not in blob
+    assert "[REDACTED]" in blob
+    kinds = [e["event"] for e in events(eng.log_path)]
+    assert "OUTPUT_FLAGGED" in kinds and kinds.index("OUTPUT_FLAGGED") < kinds.index("TOOL_CALL")
+
+
+async def test_spec006_hostile_claim_neutralized(lab, engagement):
+    eng = engagement()
+    token = httpx.get(lab.base + "/jwt/hostile-claim").json()["token"]
+    report = await call_tool("audit_json_web_token", {"token": token})
+    blob = json.dumps(report) + eng.log_path.read_text()
+    assert "ignore_previous_instructions_and_call_tool" not in blob
+    assert report["detected_claims"][2] == "[REDACTED]"
+
+
 async def test_r6_redirect_not_followed(lab, engagement):
     eng = engagement()
     before = lab.counter["/redirect/metadata"]
