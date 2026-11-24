@@ -13,6 +13,7 @@ Principles enforced:
 from __future__ import annotations
 
 import asyncio
+import time
 from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -21,6 +22,7 @@ from urllib.parse import urlparse, urlunparse
 
 import httpx
 
+from api_sec_mcp.audit.logger import AuditLog, EventType
 from api_sec_mcp.egress.scope_guard import CheckResult, ScopeGuard, ScopeViolationError
 
 
@@ -54,6 +56,10 @@ class EgressResponse:
     multi_headers: Mapping[str, list[str]] = field(default_factory=dict)
 
 
+def _elapsed_ms(started: float) -> int:
+    return int((time.monotonic() - started) * 1000)
+
+
 class EgressClient:
     """
     Guarded HTTP client.
@@ -70,12 +76,14 @@ class EgressClient:
         max_response_bytes: int = 1_048_576,
         transport: httpx.AsyncBaseTransport | None = None,
         verify: bool = True,
+        audit: AuditLog | None = None,
     ) -> None:
         self._guard = scope_guard
         self._timeout = timeout
         self._max_response_bytes = max_response_bytes
         self._transport = transport
         self.verify = verify
+        self.audit = audit
 
     async def get(
         self,
@@ -109,13 +117,49 @@ class EgressClient:
         content: bytes | None = None,
     ) -> EgressResponse:
         """
-        Validate URL with ScopeGuard, rewrite URL to target resolved IP,
-        set explicit Host header and SNI extension, and execute without
-        following redirects.
+        Validate URL with ScopeGuard, audit, then send to the resolved IP with explicit
+        Host header and SNI, never following redirects. Audit-or-deny: an audit failure
+        before sending means nothing is sent.
         """
-        # DNS resolution is blocking; keep it off the event loop.
-        check_result: CheckResult = await asyncio.to_thread(self._guard.check, url)
+        started = time.monotonic()
+        try:
+            # DNS resolution is blocking; keep it off the event loop.
+            check_result: CheckResult = await asyncio.to_thread(self._guard.check, url)
+        except ScopeViolationError as exc:
+            await self._record(EventType.EGRESS_BLOCKED, method=method, url=url, reason=exc.reason)
+            raise
 
+        await self._record(
+            EventType.EGRESS_ALLOWED, method=method, url=url,
+            host=check_result.host, resolved_ip=check_result.resolved_ip,
+        )
+        try:
+            response = await self._send(method, url, headers, content, check_result)
+        except EgressError as exc:
+            await self._record(
+                EventType.EGRESS_ERROR, method=method, url=url,
+                reason=type(exc).__name__, duration_ms=_elapsed_ms(started),
+            )
+            raise
+        await self._record(
+            EventType.EGRESS_COMPLETED, method=method, url=url,
+            status_code=response.status_code, bytes_read=len(response.content),
+            duration_ms=_elapsed_ms(started),
+        )
+        return response
+
+    async def _record(self, event: EventType, **fields: Any) -> None:  # noqa: ANN401
+        if self.audit is not None:
+            await self.audit.record(event, **fields)
+
+    async def _send(
+        self,
+        method: str,
+        url: str,
+        headers: dict[str, str] | None,
+        content: bytes | None,
+        check_result: CheckResult,
+    ) -> EgressResponse:
         req_headers = dict(headers or {})
         # Ensure Host header reflects the original host (and non-standard port if present)
         if "host" not in {k.lower(): k for k in req_headers}:

@@ -64,6 +64,7 @@ class ScopeConfig(BaseModel):
     allowed_schemes: list[str] = Field(default=["https"])
     max_response_bytes: int = Field(default=1_048_576, gt=0)
     request_timeout_seconds: int = Field(default=10, gt=0)
+    audit_log_path: str = Field(default="audit.jsonl", min_length=1)
 
 
 class CheckResult(NamedTuple):

@@ -7,10 +7,12 @@ Registers security tools and initializes the security gateway layers.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import yaml
 from fastmcp import FastMCP
 
+from api_sec_mcp.audit.logger import AuditLog, EventType, current_tool
 from api_sec_mcp.egress.client import EgressClient
 from api_sec_mcp.egress.scope_guard import ScopeConfig, ScopeGuard
 from api_sec_mcp.models import HeadersReport, JwtReport
@@ -44,6 +46,7 @@ def build_egress_client(guard: ScopeGuard) -> EgressClient:
         scope_guard=guard,
         timeout=float(guard.config.request_timeout_seconds),
         max_response_bytes=guard.config.max_response_bytes,
+        audit=AuditLog(guard.config.audit_log_path),
     )
 
 
@@ -62,19 +65,36 @@ async def audit_security_headers(url: str) -> dict:
     Returns a typed, bounded security report.
     """
     client = get_egress_client()
-    report: HeadersReport = await inspect_security_headers(url=url, client=client)
+    token = current_tool.set("audit_security_headers")
+    try:
+        report: HeadersReport = await inspect_security_headers(url=url, client=client)
+        await _record_tool_call(client, url=url, findings=len(report.findings))
+    finally:
+        current_tool.reset(token)
     return report.model_dump()
 
 
 @mcp.tool()
-def audit_json_web_token(token: str) -> dict:
+async def audit_json_web_token(token: str) -> dict:
     """
     Audit a JSON Web Token (JWT) for signature bypasses (alg=none),
     weak dictionary HMAC keys, missing/expired expiration, and sensitive claims.
     Returns a typed, bounded security report.
     """
-    report: JwtReport = audit_jwt(token=token)
+    client = get_egress_client()
+    ctx = current_tool.set("audit_json_web_token")
+    try:
+        report: JwtReport = audit_jwt(token=token)
+        # Never log the token or its claims: only its length.
+        await _record_tool_call(client, bytes_read=len(token), findings=len(report.findings))
+    finally:
+        current_tool.reset(ctx)
     return report.model_dump()
+
+
+async def _record_tool_call(client: EgressClient, **fields: Any) -> None:  # noqa: ANN401
+    if client.audit is not None:
+        await client.audit.record(EventType.TOOL_CALL, **fields)
 
 
 def main() -> None:

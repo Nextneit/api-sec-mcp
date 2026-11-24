@@ -41,3 +41,7 @@ max_response_bytes: 1048576
 
 # Optional: HTTP request timeout in seconds (default: 10).
 request_timeout_seconds: 10
+
+# Optional: append-only, hash-chained audit trail (default: audit.jsonl).
+# Metadata only; never headers, bodies, query strings or tokens.
+audit_log_path: audit.jsonl

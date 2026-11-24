@@ -29,10 +29,11 @@ def _raw_token(header: dict, payload: dict, sig: str = "c2ln") -> str:
 
 
 # ---------------- R1 ----------------
-def test_r1_config_reaches_client():
+def test_r1_config_reaches_client(tmp_path):
     cfg = ScopeConfig(
         allowed_hosts=["a.example.com"], allowed_ports=[443],
         max_response_bytes=1234, request_timeout_seconds=7,
+        audit_log_path=str(tmp_path / "a.jsonl"),
     )
     client = server.build_egress_client(ScopeGuard(cfg, resolver=lambda h: ["203.0.113.1"]))
     assert client._timeout == 7
